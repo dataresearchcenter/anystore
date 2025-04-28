@@ -1,6 +1,6 @@
 site_name: anystore
 site_url: https://docs.investigraph.dev/lib/anystore
-repo_url: https://github.com/investigativedata/anystore
+repo_url: https://github.com/dataresearchcenter/anystore
 nav:
   - Intro: index.md
   - quickstart.md
@@ -21,8 +21,9 @@ nav:
       - anystore.util: reference/util.md
 theme:
   name: material
-  logo: https://cdn.investigativedata.org/style/logo_basic_dark.svg
-  favicon: https://cdn.investigativedata.org/style/favicon.svg
+  logo: https://cdn.investigativedata.org/style/logos/darc/svg/DARC-Logo-RGB-Horizontal-Neg.svg
+  favicon: https://cdn.investigativedata.org/style/logos/darc/favicon.ico
+  custom_dir: docs/overrides
   features:
     - navigation.instant
     - navigation.tracking
@@ -35,11 +36,13 @@ extra_css:
 extra:
   social:
     - icon: material/mail
-      link: mailto:hi@investigativedata.org
+      link: mailto:hi@dataresearchcenter.org
     - icon: material/web
-      link: https://investigativedata.io
+      link: https://dataresearchcenter.org
     - icon: material/github
-      link: https://github.com/investigativedata/anystore
+      link: https://github.com/dataresearchcenter/anystore
+    - icon: material/linkedin
+      link: https://www.linkedin.com/company/dataresearchcenter/
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true

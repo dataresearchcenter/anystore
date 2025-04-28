@@ -38,8 +38,8 @@ anystore = "anystore.cli:cli"
 [project.urls]
 Homepage = "https://docs.investigraph.dev/lib/anystore"
 Documentation = "https://docs.investigraph.dev/lib/anystore"
-Repository = "https://github.com/investigativedata/anystore"
-Issues = "https://github.com/investigativedata/anystore/issues"
+Repository = "https://github.com/dataresearchcenter/anystore"
+Issues = "https://github.com/dataresearchcenter/anystore/issues"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
