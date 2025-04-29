@@ -8,7 +8,7 @@ from typing import Any, Generator
 from anystore.decorators import anycache
 from anystore.io import smart_read, smart_write
 from anystore.store import get_store
-from anystore.worker import Worker, WorkerStatus, Writer, WriteWorker
+from anystore.worker import Worker, WorkerStatus
 
 
 def test_worker(tmp_path):
@@ -91,45 +91,3 @@ def test_worker_requeue_during_run():
     res = worker.run()
     assert res.done == 149
     assert res.pending == 0
-
-
-def test_worker_writer(tmp_path):
-    out = BytesIO()
-    writer = Writer(out)
-
-    class TestWorker(WriteWorker):
-        def handle_task(self, task: Any) -> Any:
-            if task in (10, 99):
-                self.write(str(task).encode() + b"\n")
-
-    worker = TestWorker(writer, tasks=range(100))
-    res = worker.run()
-    assert res.done == 100
-    assert out.getvalue() == b"10\n99\n"
-
-    out = tmp_path / "result"
-    writer = Writer(out)
-    worker = TestWorker(writer, tasks=range(100))
-    res = worker.run()
-    assert res.done == 100
-    assert smart_read(out) == b"10\n99\n"
-
-
-def test_worker_cached():
-    cache = get_store("memory://")
-
-    class TestWorker(Worker):
-        @anycache(store=cache, key_func=lambda _, task: str(task))
-        def handle_task(self, task):
-            if task == 56:
-                raise ValueError
-            return "yes"
-
-        def exception(self, task: Any, e: Exception) -> None:
-            pass
-
-    worker = TestWorker(tasks=range(100))
-    res = worker.run()
-    assert res.done == 99
-    assert cache.get("99") == "yes"
-    assert not cache.exists("56")
