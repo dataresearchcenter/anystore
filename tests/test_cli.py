@@ -1,8 +1,10 @@
+import orjson
 from moto import mock_aws
 from typer.testing import CliRunner
 
 from anystore import __version__
 from anystore.cli import cli
+from anystore.io import smart_write
 from anystore.store import get_store
 from tests.conftest import setup_s3
 
@@ -48,3 +50,9 @@ def test_cli(tmp_path, fixtures_path):
     res = runner.invoke(cli, "--version")
     assert res.exit_code == 0
     assert res.stdout.strip() == __version__
+
+    smart_write(tmp_path / "data.csv", "foo,bar\na,b", mode="w")
+    res = runner.invoke(cli, ["csv2json", "-i", str(tmp_path / "data.csv")])
+    assert res.exit_code == 0
+    data = orjson.loads(res.stdout.strip())
+    assert data == {"foo": "a", "bar": "b"}

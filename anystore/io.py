@@ -25,6 +25,7 @@ Python usage:
 """
 
 import contextlib
+import csv
 import sys
 from io import BytesIO, StringIO
 from os import PathLike
@@ -36,7 +37,10 @@ from typing import (
     BinaryIO,
     Generator,
     Iterable,
+    Literal,
+    Self,
     TextIO,
+    Type,
     TypeAlias,
     TypeVar,
 )
@@ -44,10 +48,11 @@ from typing import (
 import orjson
 from fsspec import open
 from fsspec.core import OpenFile
+from pydantic import BaseModel
 
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
-from anystore.types import SDict, SDictGenerator
+from anystore.types import M, MGenerator, SDict, SDictGenerator
 from anystore.util import ensure_uri
 
 log = get_logger(__name__)
@@ -58,6 +63,9 @@ DEFAULT_WRITE_MODE = "wb"
 Uri: TypeAlias = PathLike | Path | BinaryIO | TextIO | str
 GenericIO: TypeAlias = OpenFile | TextIO | BinaryIO
 T = TypeVar("T")
+Formats = Literal["csv", "json"]
+FORMAT_CSV = "csv"
+FORMAT_JSON = "json"
 
 
 def _get_sysio(mode: str | None = DEFAULT_MODE) -> TextIO | BinaryIO:
@@ -170,6 +178,43 @@ def smart_stream(
             yield line
 
 
+def smart_stream_csv(uri: Uri, **kwargs: Any) -> SDictGenerator:
+    """
+    Stream csv as python objects.
+
+    Example:
+        ```python
+        from anystore import smart_stream_csv
+
+        for data in smart_stream_csv("s3://mybucket/data.csv"):
+            yield data.get("foo")
+        ```
+
+    Args:
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or `s3://mybucket/foo`
+        mode: open mode, default `rb` for byte reading.
+        **kwargs: pass through storage-specific options
+
+    Yields:
+        A generator of `dict`s loaded via `csv.DictReader`
+    """
+    with smart_open(uri, mode="r") as f:
+        yield from csv.DictReader(f)
+
+
+def smart_stream_csv_models(uri: Uri, model: Type[M], **kwargs: Any) -> MGenerator:
+    """
+    Stream csv as pydantic objects
+    """
+    for row in logged_items(
+        smart_stream_csv(uri, **kwargs),
+        "Read",
+        uri=uri,
+        item_name=model.__class__.__name__,
+    ):
+        yield model(**row)
+
+
 def smart_stream_json(
     uri: Uri, mode: str | None = DEFAULT_MODE, **kwargs: Any
 ) -> SDictGenerator:
@@ -194,6 +239,33 @@ def smart_stream_json(
     """
     for line in smart_stream(uri, mode, **kwargs):
         yield orjson.loads(line)
+
+
+def smart_stream_json_models(uri: Uri, model: Type[M], **kwargs: Any) -> MGenerator:
+    """
+    Stream json as pydantic objects
+    """
+    for row in logged_items(
+        smart_stream_json(uri, **kwargs),
+        "Read",
+        uri=uri,
+        item_name=model.__class__.__name__,
+    ):
+        yield model(**row)
+
+
+def smart_stream_models(
+    uri: Uri, model: Type[M], input_format: Formats, **kwargs: Any
+) -> MGenerator:
+    """
+    Stream json as pydantic objects
+    """
+    if input_format == FORMAT_CSV:
+        yield from smart_stream_csv_models(uri, model, **kwargs)
+    elif input_format == FORMAT_JSON:
+        yield from smart_stream_json_models(uri, model, **kwargs)
+    else:
+        raise ValueError("Invalid format, only csv or json allowed")
 
 
 def smart_read(uri: Uri, mode: str | None = DEFAULT_MODE, **kwargs: Any) -> AnyStr:
@@ -252,6 +324,58 @@ def smart_write_json(
             if "b" not in mode:
                 line = line.decode()
             fh.write(line)
+
+
+class Writer:
+    """
+    A generic writer for python dict objects to any out uri, either json or csv
+    """
+
+    def __init__(
+        self,
+        uri: Uri,
+        mode: str | None = DEFAULT_WRITE_MODE,
+        output_format: Formats | None = "json",
+        fieldnames: list[str] | None = None,
+    ) -> None:
+        if output_format not in (FORMAT_JSON, FORMAT_CSV):
+            raise ValueError("Invalid output format, only csv or json allowed")
+        mode = mode or DEFAULT_WRITE_MODE
+        self.mode = mode.replace("b", "") if output_format == "csv" else mode
+        self.handler = SmartHandler(uri, mode=self.mode)
+        self.fieldnames = fieldnames
+        self.output_format = output_format
+        self.csv_writer: csv.DictWriter | None = None
+
+    def __enter__(self) -> Self:
+        self.io = self.handler.open()
+        return self
+
+    def __exit__(self, *args) -> None:
+        self.handler.close()
+
+    def write(self, row: SDict) -> None:
+        if self.output_format == "csv" and self.csv_writer is None:
+            self.csv_writer = csv.DictWriter(self.io, self.fieldnames or row.keys())
+            self.csv_writer.writeheader()
+
+        if self.output_format == "json":
+            line = orjson.dumps(row, option=orjson.OPT_APPEND_NEWLINE)
+            if "b" not in self.mode:
+                line = line.decode()
+            self.io.write(line)
+        elif self.csv_writer:
+            self.csv_writer.writerow(row)
+
+
+class ModelWriter(Writer):
+    """
+    A generic writer for pydantic objects to any out uri, either json or csv
+    """
+
+    def write(self, row: BaseModel) -> None:
+        row = row.model_dump(by_alias=True, mode="json")
+        return super().write(row)
 
 
 def logged_items(

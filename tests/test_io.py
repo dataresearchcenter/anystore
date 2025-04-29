@@ -3,12 +3,15 @@ from pathlib import Path
 
 import pytest
 from moto import mock_aws
+from pydantic import BaseModel
 
 from anystore.io import (
+    ModelWriter,
     SmartHandler,
     smart_open,
     smart_read,
     smart_stream,
+    smart_stream_csv,
     smart_stream_json,
     smart_write,
     smart_write_json,
@@ -113,3 +116,26 @@ def test_io_json(tmp_path):
     smart_write_json(fp, data)
     loaded = [d for d in smart_stream_json(fp)]
     assert data == loaded
+
+
+def test_io_model_writer(tmp_path: Path):
+    class MyModel(BaseModel):
+        foo: int
+
+    data = [MyModel(foo=1), MyModel(foo=2)]
+
+    with ModelWriter(tmp_path / "data.csv", output_format="csv") as writer:
+        for item in data:
+            writer.write(item)
+
+    res = [x for x in smart_stream_csv(tmp_path / "data.csv")]
+    assert res[0] == {"foo": "1"}
+    assert len(res) == 2
+
+    with ModelWriter(tmp_path / "data.json", output_format="json") as writer:
+        for item in data:
+            writer.write(item)
+
+    res = [x for x in smart_stream_json(tmp_path / "data.json")]
+    assert res[0] == {"foo": 1}
+    assert len(res) == 2
