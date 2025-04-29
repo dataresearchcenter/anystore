@@ -93,7 +93,7 @@ class Worker:
     def exception(self, task: Any, e: Exception) -> None:
         if self.handle_error is None:
             if task is not None:
-                raise Exception(task) from e
+                raise e.__class__(f"{e} [Task: {task}]")
             raise e
         self.handle_error(task, e)
 
