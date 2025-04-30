@@ -210,7 +210,7 @@ def smart_stream_csv_models(uri: Uri, model: Type[M], **kwargs: Any) -> MGenerat
         smart_stream_csv(uri, **kwargs),
         "Read",
         uri=uri,
-        item_name=model.__class__.__name__,
+        item_name=model.__name__,
     ):
         yield model(**row)
 
@@ -249,7 +249,7 @@ def smart_stream_json_models(uri: Uri, model: Type[M], **kwargs: Any) -> MGenera
         smart_stream_json(uri, **kwargs),
         "Read",
         uri=uri,
-        item_name=model.__class__.__name__,
+        item_name=model.__name__,
     ):
         yield model(**row)
 
