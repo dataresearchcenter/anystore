@@ -1,6 +1,6 @@
 [project]
 name = "anystore"
-version = "0.3.0"
+version = "0.3.1"
 description = "Store and cache things anywhere"
 authors = [{ name = "Simon Wörpel", email = "simon.woerpel@pm.me" }]
 license = "AGPLv3+"
@@ -38,8 +38,8 @@ anystore = "anystore.cli:cli"
 [project.urls]
 Homepage = "https://docs.investigraph.dev/lib/anystore"
 Documentation = "https://docs.investigraph.dev/lib/anystore"
-Repository = "https://github.com/investigativedata/anystore"
-Issues = "https://github.com/investigativedata/anystore/issues"
+Repository = "https://github.com/dataresearchcenter/anystore"
+Issues = "https://github.com/dataresearchcenter/anystore/issues"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
@@ -52,7 +52,7 @@ pre-commit = "^4.0.1"
 flake8 = ">=6.1,<8.0"
 ipdb = "^0.13.13"
 bump2version = "^1.0.1"
-moto = "^5.0.11"
+moto = {extras = ["server"], version = "^5.1.4"}
 pytest-asyncio = ">=0.23.8,<0.26.0"
 mkdocs-material = "^9.5.39"
 mkdocs-autorefs = "^1.2.0"
@@ -68,3 +68,4 @@ build-backend = "poetry.core.masonry.api"
 REDIS_DEBUG = 1
 DEBUG = 1
 ANYSTORE_YAML_URI = "./tests/fixtures/store.yml"
+FSSPEC_S3_ENDPOINT_URL = "http://localhost:8888"

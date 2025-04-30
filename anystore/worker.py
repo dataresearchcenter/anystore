@@ -3,18 +3,14 @@ import threading
 import time
 from collections import Counter
 from datetime import datetime, timedelta
-from functools import cached_property
-from io import BytesIO, StringIO
 from multiprocessing import cpu_count
 from queue import Queue
 from typing import Any, Callable, Generator, Type
 
 from pydantic import BaseModel
 
-from anystore.io import Uri, smart_open, smart_write
 from anystore.logging import get_logger
 from anystore.settings import Settings
-from anystore.util import ensure_uri
 
 log = get_logger(__name__)
 settings = Settings()
@@ -97,7 +93,7 @@ class Worker:
     def exception(self, task: Any, e: Exception) -> None:
         if self.handle_error is None:
             if task is not None:
-                raise Exception(task) from e
+                raise e.__class__(f"{e} [Task: {task}]")
             raise e
         self.handle_error(task, e)
 
@@ -189,55 +185,3 @@ class Worker:
             self.log_status()
             self.done()
         return self.get_status()
-
-
-class Writer:
-    """
-    Use a generic writer for any out uri
-
-    This is used by parallel workers:
-    - if output is stdout or a local path, write in parallel
-    - if output is any other uri, buffer results and write at the end
-    """
-
-    def __init__(self, uri: Uri) -> None:
-        self.uri = uri
-        self.buffer = []
-
-    @cached_property
-    def can_write_parallel(self) -> bool:
-        if isinstance(self.uri, (BytesIO, StringIO)):
-            return True
-        uri = ensure_uri(self.uri)
-        return uri == "-" or uri.startswith("file://")
-
-    def write(self, data: Any) -> None:
-        if self.can_write_parallel:
-            self._write_parallel(data)
-        else:
-            self.buffer.append(data)
-
-    def flush(self) -> None:
-        if not self.can_write_parallel and self.buffer:
-            self._write_flush()
-
-    def _write_parallel(self, data: Any) -> None:
-        smart_write(self.uri, data, "ab")
-
-    def _write_flush(self) -> None:
-        with smart_open(ensure_uri(self.uri)) as f:
-            f.writelines(self.buffer)
-
-
-class WriteWorker(Worker):
-    def __init__(self, writer: Writer, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.writer = writer
-
-    def write(self, value: Any) -> None:
-        with self.lock:
-            self.writer.write(value)
-
-    def done(self) -> None:
-        self.writer.flush()
-        log.info("Write results.", uri=str(self.writer.uri))

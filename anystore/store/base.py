@@ -184,7 +184,7 @@ class BaseStore(StoreModel, AbstractBackend):
             ttl: Time to live (in seconds) for that key if the backend supports
                 it (e.g. redis, sql)
         """
-        if not self.store_none_values:
+        if value is None and not self.store_none_values:
             return
         serialization_mode = serialization_mode or self.serialization_mode
         serialization_func = serialization_func or self.serialization_func

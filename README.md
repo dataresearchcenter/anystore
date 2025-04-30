@@ -2,7 +2,7 @@
 [![Python test and package](https://github.com/investigativedata/anystore/actions/workflows/python.yml/badge.svg)](https://github.com/investigativedata/anystore/actions/workflows/python.yml)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![Coverage Status](https://coveralls.io/repos/github/investigativedata/anystore/badge.svg?branch=main)](https://coveralls.io/github/investigativedata/anystore?branch=main)
-[![GPL-3.0 License](https://img.shields.io/pypi/l/anystore)](./LICENSE)
+[![AGPLv3+ License](https://img.shields.io/pypi/l/anystore)](./LICENSE)
 
 # anystore
 

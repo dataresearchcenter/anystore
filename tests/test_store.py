@@ -172,6 +172,8 @@ def _test_store(fixtures_path, uri: str, can_delete: bool | None = True) -> bool
     store.store_none_values = False
     store.put("nothing", None)
     assert not store.exists("nothing")
+    store.put("nothing", 1)
+    assert store.exists("nothing")
 
     return True
 

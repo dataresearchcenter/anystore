@@ -5,7 +5,13 @@ from rich import print
 from rich.console import Console
 
 from anystore import __version__
-from anystore.io import smart_open, smart_read, smart_write
+from anystore.io import (
+    Writer,
+    smart_open,
+    smart_read,
+    smart_stream_csv,
+    smart_write,
+)
 from anystore.logging import configure_logging
 from anystore.mirror import mirror
 from anystore.settings import Settings
@@ -141,8 +147,29 @@ def cli_io(
     o: Annotated[str, typer.Option("-o", help="Output uri")] = "-",
 ):
     """
-    Generic i/o wrapper using `anystore.io.smart_read` and
-    `anystore.io.smart_write` which is wrapped around `fsspec`
+    Generic i/o streaming wrapper which is wrapped around `fsspec`
+
+    Example:
+        anystore io -i ./data.csv -o s3://my_bucket/data.csv
     """
     with ErrorHandler():
-        smart_write(o, smart_read(i))
+        with smart_open(i) as reader:
+            with smart_open(o, "wb") as writer:
+                writer.write(reader.read())
+
+
+@cli.command("csv2json")
+def cli_csv2json(
+    i: Annotated[str, typer.Option("-i", help="Input uri")] = "-",
+    o: Annotated[str, typer.Option("-o", help="Output uri")] = "-",
+):
+    """
+    Generic i/o wrapper for streaming input csv data to json objects
+
+    Example:
+        cat data.csv | anystore csv2json
+    """
+    with ErrorHandler():
+        with Writer(o) as w:
+            for row in smart_stream_csv(i):
+                w.write(row)
