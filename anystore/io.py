@@ -26,6 +26,7 @@ Python usage:
 
 import contextlib
 import csv
+import logging
 import sys
 from io import BytesIO, StringIO
 from os import PathLike
@@ -382,8 +383,8 @@ def logged_items(
     items: Iterable[T],
     action: str,
     chunk_size: int | None = 10_000,
-    uri: Uri | None = None,
     item_name: str | None = None,
+    logger: logging.Logger | None = None,
     **log_kwargs,
 ) -> Generator[T, None, None]:
     """
@@ -401,24 +402,23 @@ def logged_items(
     Args:
         items: Sequence of any items
         action: Action name to log
-        uri: string or path-like key uri (only for logging purpose)
         chunk_size: Log on every chunk_size
         item_name: Name of item
+        logger: Specific logger to use
 
     Yields:
         The input items
     """
+    log_ = logger or log
     chunk_size = chunk_size or 10_000
     ix = 0
     item_name = item_name or "Item"
-    if uri:
-        uri = ensure_uri(uri)
     for ix, item in enumerate(items, 1):
         if ix == 1:
             item_name = item_name or item.__class__.__name__.title()
         if ix % chunk_size == 0:
             item_name = item_name or item.__class__.__name__.title()
-            log.info(f"{action} `{item_name}` {ix} ...", uri=uri, **log_kwargs)
+            log_.info(f"{action} `{item_name}` {ix} ...", **log_kwargs)
         yield item
     if ix:
-        log.info(f"{action} {ix} `{item_name}s`: Done.", uri=uri, **log_kwargs)
+        log_.info(f"{action} {ix} `{item_name}s`: Done.", **log_kwargs)
