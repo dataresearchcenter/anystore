@@ -176,7 +176,7 @@ def smart_stream(
     """
     with smart_open(uri, mode, **kwargs) as fh:
         while line := fh.readline():
-            yield line
+            yield line.strip()
 
 
 def smart_stream_csv(uri: Uri, **kwargs: Any) -> SDictGenerator:

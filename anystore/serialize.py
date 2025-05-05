@@ -64,7 +64,7 @@ def to_store(
         serialization_func: Function to use to serialize
         model: Pydantic model to use for serialization
     """
-    if model is not None:
+    if model is not None and value:
         return value.model_dump_json().encode()
     if serialization_func is not None:
         value = serialization_func(value)
@@ -118,7 +118,8 @@ def from_store(
     """
     if model is not None:
         data = orjson.loads(value)
-        return model(**data)
+        if data:
+            return model(**data)
     if deserialization_func is not None:
         value = deserialization_func(value)
 
