@@ -9,7 +9,7 @@ import contextlib
 from datetime import datetime
 from io import BytesIO, StringIO
 from pathlib import Path
-from typing import IO, Any, Callable, Generator
+from typing import IO, Any, Callable, ContextManager, Generator
 from urllib.parse import quote, unquote
 
 from anystore.exceptions import DoesNotExist, ReadOnlyError
@@ -328,7 +328,7 @@ class BaseStore(StoreModel, AbstractBackend):
 
     def open(
         self, key: Uri, mode: str | None = DEFAULT_MODE, **kwargs: Any
-    ) -> Generator[IO, None, None]:
+    ) -> ContextManager[IO]:
         """
         Open the given key similar to built-in `open()`
 

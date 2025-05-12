@@ -5,7 +5,7 @@ Store backend using any file-like location usable via `fsspec`
 import re
 from datetime import datetime
 from functools import cached_property
-from typing import BinaryIO, Generator, TextIO
+from typing import IO, ContextManager, Generator
 
 import fsspec
 
@@ -53,7 +53,7 @@ class Store(BaseStore):
     def _get_key_prefix(self) -> str:
         return str(self.uri).rstrip("/")
 
-    def _open(self, key: str, **kwargs) -> BinaryIO | TextIO:
+    def _open(self, key: str, **kwargs) -> ContextManager[IO]:
         return smart_open(key, **kwargs)
 
     def _iterate_keys(
