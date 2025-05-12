@@ -30,7 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 sql = ["sqlalchemy (>=2.0.36,<3.0.0)"]
-redis = ["redis (>=5.2.1,<6.0.0)", "fakeredis (>=2.26.2,<3.0.0)"]
+redis = ["redis (>=4.0.0)", "fakeredis (>=2.26.2,<3.0.0)"]
 
 [project.scripts]
 anystore = "anystore.cli:cli"
