@@ -3,6 +3,7 @@ from typing import Annotated, Optional
 import typer
 from rich import print
 from rich.console import Console
+from structlog import BoundLogger
 
 from anystore import __version__
 from anystore.io import (
@@ -25,6 +26,9 @@ state = {"uri": settings.uri}
 
 
 class ErrorHandler:
+    def __init__(self, logger: BoundLogger | None = None) -> None:
+        self.log = logger
+
     def __enter__(self):
         pass
 
@@ -34,8 +38,10 @@ class ErrorHandler:
         elif e is not None:
             if settings.debug:
                 raise e
-            console.print(f"[red][bold]{e.__name__}[/bold]: {msg}[/red]")
-            raise typer.Exit(code=1)
+            if self.log is not None:
+                self.log.error(f"{e.__name__}: {msg}")
+            else:
+                console.print(f"[red][bold]{e.__name__}[/bold]: {msg}[/red]")
 
 
 @cli.callback(invoke_without_command=True)

@@ -27,6 +27,7 @@ import functools
 from typing import Any, Callable, Type
 
 from pydantic import BaseModel
+from structlog import BoundLogger
 
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
@@ -158,6 +159,73 @@ def async_anycache(func=None, **kwargs):
             except DoesNotExist:
                 res = await func(*args, **kwargs)
                 return _handle_result(key, res, store)
+
+        return _inner
+
+    if func is None:
+        return _decorator
+    return _decorator(func)
+
+
+def error_handler(
+    func: Callable[..., Any] | None = None, logger: BoundLogger | None = None
+) -> Callable[..., Any]:
+    """
+    Wrap any execution into an error handler that catches Exceptions. If in
+    debug mode (env var `DEBUG=1`) it will raise the exception, otherwise log
+    the error.
+
+    Example:
+        ```python
+        @error_handler
+        def compute(*args, **kwargs):
+            return "result"
+        ```
+
+    Args:
+        func: The function to wrap
+        logger: An optional `BoundLogger` instance to use as the error logger
+
+    Returns:
+        Callable: The decorated function
+    """
+    _log = logger or log
+
+    def _decorator(func):
+        @functools.wraps(func)
+        def _inner(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                _log.error(f"{e.__class__.__name__}: {e}", args=args, **kwargs)
+                if settings.debug:
+                    raise e
+
+        return _inner
+
+    if func is None:
+        return _decorator
+    return _decorator(func)
+
+
+def async_error_handler(
+    func: Callable[..., Any] | None = None, logger: BoundLogger | None = None
+) -> Callable[..., Any]:
+    """
+    Async implementation of the
+    [@error_handler][anystore.decorators.error_handler] decorator
+    """
+    _log = logger or log
+
+    def _decorator(func):
+        @functools.wraps(func)
+        async def _inner(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                _log.error(f"{e.__class__.__name__}: {e}", args=args, **kwargs)
+                if settings.debug:
+                    raise e
 
         return _inner
 
