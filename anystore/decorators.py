@@ -27,13 +27,16 @@ import functools
 from typing import Any, Callable, Type
 
 from pydantic import BaseModel
+from structlog import BoundLogger
 
 from anystore.exceptions import DoesNotExist
+from anystore.logging import get_logger
 from anystore.serialize import Mode
 from anystore.settings import Settings
 from anystore.store import BaseStore, get_store
 from anystore.util import make_signature_key
 
+log = get_logger(__name__)
 settings = Settings()
 
 
@@ -41,14 +44,13 @@ def _setup_decorator(**kwargs) -> tuple[Callable, BaseStore]:
     key_func: Callable = kwargs.pop("key_func", None) or make_signature_key
     store: BaseStore = kwargs.pop("store", None) or get_store(**kwargs)
     store = store.model_copy()
-    store.model = kwargs.pop("model", None)
-    store.default_ttl = kwargs.get("ttl") or store.default_ttl
-    store.serialization_func = (
-        kwargs.pop("serialization_func", None) or store.serialization_func
-    )
-    store.deserialization_func = (
-        kwargs.pop("deserialization_func", None) or store.deserialization_func
-    )
+    store.default_ttl = kwargs.pop("ttl", None) or store.default_ttl
+    for key, value in kwargs.items():
+        if key != "uri":
+            try:
+                setattr(store, key, value)
+            except ValueError as e:
+                log.error(f"{e.__class__.__name__}: {e}")
     store.raise_on_nonexist = True
     return key_func, store
 
@@ -71,7 +73,7 @@ def anycache(
     deserialization_func: Callable | None = None,
     ttl: int | None = None,
     use_cache: bool | None = settings.use_cache,
-    **store_kwargs: Any
+    **store_kwargs: Any,
 ) -> Callable[..., Any]:
     """
     Cache a function call in a configurable cache backend. By default, the
@@ -117,7 +119,7 @@ def anycache(
         deserialization_func=deserialization_func,
         model=model,
         ttl=ttl,
-        **store_kwargs
+        **store_kwargs,
     )
 
     def _decorator(func):
@@ -157,6 +159,73 @@ def async_anycache(func=None, **kwargs):
             except DoesNotExist:
                 res = await func(*args, **kwargs)
                 return _handle_result(key, res, store)
+
+        return _inner
+
+    if func is None:
+        return _decorator
+    return _decorator(func)
+
+
+def error_handler(
+    func: Callable[..., Any] | None = None, logger: BoundLogger | None = None
+) -> Callable[..., Any]:
+    """
+    Wrap any execution into an error handler that catches Exceptions. If in
+    debug mode (env var `DEBUG=1`) it will raise the exception, otherwise log
+    the error.
+
+    Example:
+        ```python
+        @error_handler
+        def compute(*args, **kwargs):
+            return "result"
+        ```
+
+    Args:
+        func: The function to wrap
+        logger: An optional `BoundLogger` instance to use as the error logger
+
+    Returns:
+        Callable: The decorated function
+    """
+    _log = logger or log
+
+    def _decorator(func):
+        @functools.wraps(func)
+        def _inner(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                _log.error(f"{e.__class__.__name__}: {e}", args=args, **kwargs)
+                if settings.debug:
+                    raise e
+
+        return _inner
+
+    if func is None:
+        return _decorator
+    return _decorator(func)
+
+
+def async_error_handler(
+    func: Callable[..., Any] | None = None, logger: BoundLogger | None = None
+) -> Callable[..., Any]:
+    """
+    Async implementation of the
+    [@error_handler][anystore.decorators.error_handler] decorator
+    """
+    _log = logger or log
+
+    def _decorator(func):
+        @functools.wraps(func)
+        async def _inner(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                _log.error(f"{e.__class__.__name__}: {e}", args=args, **kwargs)
+                if settings.debug:
+                    raise e
 
         return _inner
 
