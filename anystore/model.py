@@ -15,7 +15,14 @@ from anystore.mixins import BaseModel
 from anystore.serialize import Mode
 from anystore.settings import Settings
 from anystore.types import Model
-from anystore.util import SCHEME_FILE, SCHEME_MEMORY, SCHEME_REDIS, ensure_uri, join_uri
+from anystore.util import (
+    SCHEME_FILE,
+    SCHEME_MEMORY,
+    SCHEME_REDIS,
+    SCHEME_S3,
+    ensure_uri,
+    join_uri,
+)
 
 settings = Settings()
 
@@ -109,6 +116,11 @@ class StoreModel(BaseModel):
     def is_http(self) -> bool:
         """Check if it is a http(s) remote store"""
         return self.scheme.startswith("http")
+
+    @cached_property
+    def is_s3(self) -> bool:
+        """Check if it is a s3 (compatible) remote store"""
+        return self.scheme == SCHEME_S3
 
     @cached_property
     def is_sql(self) -> bool:

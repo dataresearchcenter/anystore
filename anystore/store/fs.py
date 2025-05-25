@@ -14,7 +14,7 @@ from anystore.io import smart_open, smart_read, smart_write
 from anystore.model import BaseStats
 from anystore.store.base import BaseStore
 from anystore.types import Value
-from anystore.util import SCHEME_S3, join_relpaths, join_uri
+from anystore.util import join_relpaths, join_uri
 
 
 class Store(BaseStore):
@@ -69,7 +69,7 @@ class Store(BaseStore):
         if glob:
             glob_path = self.get_key(join_relpaths(prefix, glob))
             for key in self._fs.glob(glob_path):
-                if self.scheme == SCHEME_S3:  # /{bucket}/{base_path}
+                if self.is_s3:  # /{bucket}/key
                     key = f"{self.scheme}://{key}"
                 key = self._get_relpath(join_uri(self.uri, key))
                 if not exclude_prefix or not key.startswith(exclude_prefix):
