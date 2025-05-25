@@ -1,4 +1,5 @@
 import hashlib
+import mimetypes
 import shutil
 from io import BytesIO, StringIO
 from os.path import splitext
@@ -9,6 +10,7 @@ from urllib.parse import unquote, urljoin, urlparse, urlsplit, urlunsplit
 from banal import clean_dict as _clean_dict
 from banal import is_mapping
 from pydantic import BaseModel
+from rigour.mime import normalize_mimetype
 
 from anystore.types import SDict, Uri
 
@@ -287,7 +289,7 @@ def get_extension(uri: Uri) -> str | None:
 
 def rm_rf(uri: Uri) -> None:
     """
-    like rm -rf, ignoring errors.
+    like `rm -rf`, ignoring errors.
     """
     try:
         p = Path(uri)
@@ -304,3 +306,12 @@ def model_dump(obj: BaseModel) -> SDict:
     Serialize a pydantic object to a dict by alias and json mode
     """
     return obj.model_dump(by_alias=True, mode="json")
+
+
+def guess_mimetype(key: Uri) -> str:
+    """
+    Guess the mimetype based on a file extension and normalize it via
+    `rigour.mime`
+    """
+    mtype, _ = mimetypes.guess_type(str(key))
+    return normalize_mimetype(mtype)
