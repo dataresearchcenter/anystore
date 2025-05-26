@@ -45,7 +45,7 @@ class Store(BaseStore):
         data["updated_at"] = data.pop("LastModified", None)  # s3
         if ts:
             data["created_at"] = datetime.fromtimestamp(ts)
-        return BaseStats(**data)
+        return BaseStats(**data, raw=data)
 
     def _delete(self, key: str) -> None:
         self._fs.delete(key)

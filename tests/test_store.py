@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pytest
 from moto import mock_aws
+from rigour.mime import PLAIN
 
 from anystore.exceptions import DoesNotExist, ReadOnlyError
 from anystore.io import smart_read
@@ -120,9 +121,10 @@ def _test_store(fixtures_path, uri: str, can_delete: bool | None = True) -> bool
     md5sum = "6d484beb4162b026abc7cfea019acbd1"
     sha1sum = "ed3141878ed32d8a1d583e7ce7de323118b933d3"
     lorem = smart_read(fixtures_path / "lorem.txt")
-    store.put("lorem", lorem)
-    assert store.checksum("lorem") == sha1sum
-    assert store.checksum("lorem", "md5") == md5sum
+    store.put("data.txt", lorem)
+    assert store.checksum("data.txt") == sha1sum
+    assert store.checksum("data.txt", "md5") == md5sum
+    assert store.info("data.txt").mimetype == "text/plain"
 
     # info (stats)
     store.put("lorem2/ipsum.pdf", lorem)
@@ -188,6 +190,7 @@ def _test_store_external(fixtures_path, store: BaseStore):
     assert len(keys) == 1
     assert store.get("lorem.txt") == lorem
     assert store.get("sub dir/lorem.txt") == lorem
+    assert store.info("sub dir/lorem.txt").mimetype == PLAIN
 
     return True
 
