@@ -80,7 +80,7 @@ def get_store(
     return Store(uri=uri, **kwargs)
 
 
-def get_store_for_uri(uri: Uri, **kwargs) -> tuple[Store, str]:
+def get_store_for_uri(uri: Uri, **kwargs) -> tuple[BaseStore, str]:
     parsed = urlparse(ensure_uri(uri))
     if parsed.scheme in ("redis", "memory") or "sql" in parsed.scheme:
         raise NotImplementedError(f"Cannot parse `{uri}` with scheme `{parsed.scheme}`")

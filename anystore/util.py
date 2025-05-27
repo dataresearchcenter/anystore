@@ -4,7 +4,7 @@ import shutil
 from io import BytesIO, StringIO
 from os.path import splitext
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, TypeVar
 from urllib.parse import unquote, urljoin, urlparse, urlsplit, urlunsplit
 
 from banal import clean_dict as _clean_dict
@@ -341,7 +341,10 @@ def dict_merge(d1: dict[Any, Any], d2: dict[Any, Any]) -> dict[Any, Any]:
     return d1
 
 
-def pydantic_merge(m1: BaseModel, m2: BaseModel) -> BaseModel:
+BM = TypeVar("BM", bound=BaseModel)
+
+
+def pydantic_merge(m1: BM, m2: BM) -> BM:
     """Merge the second pydantic object into the first one"""
     if m1.__class__ != m2.__class__:
         raise ValueError(

@@ -51,6 +51,7 @@ import orjson
 from fsspec import open
 from fsspec.core import OpenFile
 from pydantic import BaseModel
+from structlog.stdlib import BoundLogger
 
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
@@ -482,7 +483,7 @@ def logged_items(
     action: str,
     chunk_size: int | None = 10_000,
     item_name: str | None = None,
-    logger: logging.Logger | None = None,
+    logger: logging.Logger | BoundLogger | None = None,
     **log_kwargs,
 ) -> Generator[T, None, None]:
     """
