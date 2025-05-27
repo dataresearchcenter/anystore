@@ -8,6 +8,8 @@ from functools import cached_property
 from typing import IO, ContextManager, Generator
 
 import fsspec
+import httpx
+from dateparser import parse as parse_date
 
 from anystore.exceptions import DoesNotExist
 from anystore.io import smart_open, smart_read, smart_write
@@ -41,8 +43,15 @@ class Store(BaseStore):
 
     def _info(self, key: str) -> BaseStats:
         data = self._fs.info(key)
+        # FIXME fsspec http no headers?
+        if self.is_http:
+            res = httpx.head(key)
+            if "last-modified" in res.headers:
+                data["updated_at"] = parse_date(res.headers["last-modified"])
         ts = data.pop("created", None)
-        data["updated_at"] = data.pop("LastModified", None)  # s3
+        data["updated_at"] = data.get("updated_at") or data.pop(
+            "LastModified", None
+        )  # s3
         if ts:
             data["created_at"] = datetime.fromtimestamp(ts)
         return BaseStats(**data, raw=data)
@@ -77,7 +86,7 @@ class Store(BaseStore):
                     if not self.is_http or not HTTP_INDEX_RE.search(key):
                         yield key
         else:
-            path = self.get_key(prefix, http_quoted=True) + "/"
+            path = self.get_key(prefix) + "/"
             for _, children, keys in self._fs.walk(path, maxdepth=1):
                 for key in keys:
                     key = join_relpaths(self._get_relpath(path), key)

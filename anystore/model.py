@@ -44,6 +44,11 @@ class BaseStats(BaseModel):
     raw: SDict = {}
     """Raw data (to preserve headers)"""
 
+    @field_validator("size", mode="before")
+    @classmethod
+    def ensure_size(cls, value: Any) -> Any:
+        return value or 0
+
 
 class Stats(BaseStats):
     """Meta information for a store key"""

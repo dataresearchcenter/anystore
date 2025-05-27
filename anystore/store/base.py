@@ -10,7 +10,7 @@ from datetime import datetime
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import IO, Any, Callable, ContextManager, Generator
-from urllib.parse import quote, unquote
+from urllib.parse import unquote
 
 from anystore.exceptions import DoesNotExist, ReadOnlyError
 from anystore.io import DEFAULT_MODE
@@ -68,7 +68,7 @@ class BaseStore(StoreModel, AbstractBackend):
         if raise_on_nonexist is None:
             raise_on_nonexist = self.raise_on_nonexist
         kwargs = self.ensure_kwargs(**kwargs)
-        key = self.get_key(key, http_quoted=True)
+        key = self.get_key(key)
         try:
             return from_store(
                 self._read(key, raise_on_nonexist, **kwargs),
@@ -95,7 +95,7 @@ class BaseStore(StoreModel, AbstractBackend):
             The (optionally serialized) value for the key
         """
         value = self.get(key, *args, **kwargs)
-        self._delete(self.get_key(key, http_quoted=True))
+        self._delete(self.get_key(key))
         return value
 
     @check_readonly
@@ -108,7 +108,7 @@ class BaseStore(StoreModel, AbstractBackend):
             ignore_errors: Ignore exceptions if deletion fails
         """
         try:
-            self._delete(self.get_key(key, http_quoted=True))
+            self._delete(self.get_key(key))
         except Exception as e:
             if not ignore_errors:
                 raise e
@@ -143,7 +143,7 @@ class BaseStore(StoreModel, AbstractBackend):
             anystore.exceptions.DoesNotExists: If key doesn't exist and
                 raise_on_nonexist=True
         """
-        key = self.get_key(key, http_quoted=True)
+        key = self.get_key(key)
         model = model or self.model
         extra_kwargs = {
             "serialization_mode": serialization_mode or self.serialization_mode,
@@ -190,7 +190,7 @@ class BaseStore(StoreModel, AbstractBackend):
         serialization_func = serialization_func or self.serialization_func
         model = model or self.model
         kwargs = self.ensure_kwargs(**kwargs)
-        key = self.get_key(key, http_quoted=True)
+        key = self.get_key(key)
         ttl = ttl or self.default_ttl or None
         self._write(
             key,
@@ -205,7 +205,7 @@ class BaseStore(StoreModel, AbstractBackend):
 
     def exists(self, key: Uri) -> bool:
         """Check if the given `key` exists"""
-        return self._exists(self.get_key(key, http_quoted=True))
+        return self._exists(self.get_key(key))
 
     def info(self, key: Uri) -> Stats:
         """
@@ -214,7 +214,7 @@ class BaseStore(StoreModel, AbstractBackend):
         Returns:
             Key metadata
         """
-        stats = self._info(self.get_key(key, http_quoted=True))
+        stats = self._info(self.get_key(key))
         key = str(key)
         return Stats(
             **stats.model_dump(),
@@ -227,15 +227,10 @@ class BaseStore(StoreModel, AbstractBackend):
         config = clean_dict(self.backend_config)
         return {**config, **clean_dict(kwargs)}
 
-    def get_key(self, key: Uri, http_quoted: bool | None = False) -> str:
+    def get_key(self, key: Uri) -> str:
         key = str(key)
-        http_quoted = self.is_http and http_quoted
-        if http_quoted:
-            key = quote(unquote(key))
         key = f"{self._get_key_prefix()}/{key}".strip("/")
-        if not http_quoted:
-            return unquote(key)
-        return key
+        return unquote(key)
 
     def iterate_keys(
         self,
@@ -353,7 +348,7 @@ class BaseStore(StoreModel, AbstractBackend):
         if self.readonly and ("w" in mode or "a" in mode):
             raise ReadOnlyError(f"Store `{self.uri}` is configured readonly!")
         kwargs = self.ensure_kwargs(**kwargs)
-        key = self.get_key(key, http_quoted=True)
+        key = self.get_key(key)
         return self._open(key, mode=mode, **kwargs)
 
     @check_readonly
