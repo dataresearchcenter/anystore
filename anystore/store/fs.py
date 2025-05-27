@@ -5,16 +5,18 @@ Store backend using any file-like location usable via `fsspec`
 import re
 from datetime import datetime
 from functools import cached_property
-from typing import BinaryIO, Generator, TextIO
+from typing import IO, ContextManager, Generator
 
 import fsspec
+import httpx
+from dateparser import parse as parse_date
 
 from anystore.exceptions import DoesNotExist
 from anystore.io import smart_open, smart_read, smart_write
 from anystore.model import BaseStats
 from anystore.store.base import BaseStore
 from anystore.types import Value
-from anystore.util import SCHEME_S3, join_relpaths, join_uri
+from anystore.util import join_relpaths, join_uri
 
 
 class Store(BaseStore):
@@ -41,11 +43,18 @@ class Store(BaseStore):
 
     def _info(self, key: str) -> BaseStats:
         data = self._fs.info(key)
+        # FIXME fsspec http no headers?
+        if self.is_http:
+            res = httpx.head(key)
+            if "last-modified" in res.headers:
+                data["updated_at"] = parse_date(res.headers["last-modified"])
         ts = data.pop("created", None)
-        data["updated_at"] = data.pop("LastModified", None)  # s3
+        data["updated_at"] = data.get("updated_at") or data.pop(
+            "LastModified", None
+        )  # s3
         if ts:
             data["created_at"] = datetime.fromtimestamp(ts)
-        return BaseStats(**data)
+        return BaseStats(**data, raw=data)
 
     def _delete(self, key: str) -> None:
         self._fs.delete(key)
@@ -53,7 +62,7 @@ class Store(BaseStore):
     def _get_key_prefix(self) -> str:
         return str(self.uri).rstrip("/")
 
-    def _open(self, key: str, **kwargs) -> BinaryIO | TextIO:
+    def _open(self, key: str, **kwargs) -> ContextManager[IO]:
         return smart_open(key, **kwargs)
 
     def _iterate_keys(
@@ -69,7 +78,7 @@ class Store(BaseStore):
         if glob:
             glob_path = self.get_key(join_relpaths(prefix, glob))
             for key in self._fs.glob(glob_path):
-                if self.scheme == SCHEME_S3:  # /{bucket}/{base_path}
+                if self.is_s3:  # /{bucket}/key
                     key = f"{self.scheme}://{key}"
                 key = self._get_relpath(join_uri(self.uri, key))
                 if not exclude_prefix or not key.startswith(exclude_prefix):
@@ -77,7 +86,7 @@ class Store(BaseStore):
                     if not self.is_http or not HTTP_INDEX_RE.search(key):
                         yield key
         else:
-            path = self.get_key(prefix, http_quoted=True) + "/"
+            path = self.get_key(prefix) + "/"
             for _, children, keys in self._fs.walk(path, maxdepth=1):
                 for key in keys:
                     key = join_relpaths(self._get_relpath(path), key)

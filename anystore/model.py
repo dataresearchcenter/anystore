@@ -10,12 +10,21 @@ from typing import Any, Callable
 from urllib.parse import urlparse
 
 from pydantic import field_validator
+from rigour.mime import DEFAULT, normalize_mimetype
 
 from anystore.mixins import BaseModel
 from anystore.serialize import Mode
 from anystore.settings import Settings
-from anystore.types import Model
-from anystore.util import SCHEME_FILE, SCHEME_MEMORY, SCHEME_REDIS, ensure_uri, join_uri
+from anystore.types import Model, SDict, Uri
+from anystore.util import (
+    SCHEME_FILE,
+    SCHEME_MEMORY,
+    SCHEME_REDIS,
+    SCHEME_S3,
+    ensure_uri,
+    guess_mimetype,
+    join_uri,
+)
 
 settings = Settings()
 
@@ -32,14 +41,24 @@ class BaseStats(BaseModel):
     size: int
     """Size (content length) in bytes"""
 
+    raw: SDict = {}
+    """Raw data (to preserve headers)"""
+
+    @field_validator("size", mode="before")
+    @classmethod
+    def ensure_size(cls, value: Any) -> Any:
+        return value or 0
+
 
 class Stats(BaseStats):
     """Meta information for a store key"""
 
     name: str
     """Key name: last part of the key (aka file name without path)"""
+
     store: str
     """Store base uri"""
+
     key: str
     """Full path of key"""
 
@@ -58,11 +77,23 @@ class Stats(BaseStats):
             return join_uri(self.store, self.key)
         return self.key
 
+    @property
+    def mimetype(self) -> str:
+        """
+        Return the mimetype based on response headers or extension
+        """
+        if self.raw:
+            mtype = self.raw.get("ContentType") or self.raw.get("mimetype")
+            mtype = normalize_mimetype(mtype)
+            if mtype not in (DEFAULT, "binary/octet-stream"):
+                return mtype
+        return guess_mimetype(self.name)
+
 
 class StoreModel(BaseModel):
     """Store model to initialize a store from configuration"""
 
-    uri: str
+    uri: Uri
     """Store base uri"""
     serialization_mode: Mode | None = settings.serialization_mode
     """Default serialization (auto, raw, pickle, json)"""
@@ -85,15 +116,15 @@ class StoreModel(BaseModel):
 
     @cached_property
     def scheme(self) -> str:
-        return urlparse(self.uri).scheme
+        return urlparse(str(self.uri)).scheme
 
     @cached_property
     def path(self) -> str:
-        return urlparse(self.uri).path.strip("/")
+        return urlparse(str(self.uri)).path.strip("/")
 
     @cached_property
     def netloc(self) -> str:
-        return urlparse(self.uri).netloc
+        return urlparse(str(self.uri)).netloc
 
     @cached_property
     def is_local(self) -> bool:
@@ -109,6 +140,11 @@ class StoreModel(BaseModel):
     def is_http(self) -> bool:
         """Check if it is a http(s) remote store"""
         return self.scheme.startswith("http")
+
+    @cached_property
+    def is_s3(self) -> bool:
+        """Check if it is a s3 (compatible) remote store"""
+        return self.scheme == SCHEME_S3
 
     @cached_property
     def is_sql(self) -> bool:

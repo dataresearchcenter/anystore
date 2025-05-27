@@ -28,6 +28,7 @@ import contextlib
 import csv
 import logging
 import sys
+from enum import StrEnum
 from io import BytesIO, StringIO
 from os import PathLike
 from pathlib import Path
@@ -50,6 +51,7 @@ import orjson
 from fsspec import open
 from fsspec.core import OpenFile
 from pydantic import BaseModel
+from structlog.stdlib import BoundLogger
 
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
@@ -67,6 +69,13 @@ T = TypeVar("T")
 Formats = Literal["csv", "json"]
 FORMAT_CSV = "csv"
 FORMAT_JSON = "json"
+
+
+class IOFormat(StrEnum):
+    """For use in typer cli"""
+
+    csv = "csv"
+    json = "json"
 
 
 def _get_sysio(mode: str | None = DEFAULT_MODE) -> TextIO | BinaryIO:
@@ -135,7 +144,8 @@ def smart_open(
         ```
 
     Args:
-        uri: string or path-like key uri to open, e.g. `./local/data.txt` or `s3://mybucket/foo`
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
         mode: open mode, default `rb` for byte reading.
         **kwargs: pass through storage-specific options
 
@@ -146,7 +156,7 @@ def smart_open(
     try:
         yield handler.open()
     except FileNotFoundError as e:
-        raise DoesNotExist from e
+        raise DoesNotExist(str(e))
     finally:
         handler.close()
 
@@ -167,7 +177,8 @@ def smart_stream(
         ```
 
     Args:
-        uri: string or path-like key uri to open, e.g. `./local/data.txt` or `s3://mybucket/foo`
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
         mode: open mode, default `rb` for byte reading.
         **kwargs: pass through storage-specific options
 
@@ -192,7 +203,8 @@ def smart_stream_csv(uri: Uri, **kwargs: Any) -> SDictGenerator:
         ```
 
     Args:
-        uri: string or path-like key uri to open, e.g. `./local/data.txt` or `s3://mybucket/foo`
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
         mode: open mode, default `rb` for byte reading.
         **kwargs: pass through storage-specific options
 
@@ -231,7 +243,8 @@ def smart_stream_json(
         ```
 
     Args:
-        uri: string or path-like key uri to open, e.g. `./local/data.txt` or `s3://mybucket/foo`
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
         mode: open mode, default `rb` for byte reading.
         **kwargs: pass through storage-specific options
 
@@ -255,6 +268,25 @@ def smart_stream_json_models(uri: Uri, model: Type[M], **kwargs: Any) -> MGenera
         yield model(**row)
 
 
+def smart_stream_data(uri: Uri, input_format: Formats, **kwargs: Any) -> SDictGenerator:
+    """
+    Stream data objects loaded as dict from json or csv sources
+
+    Args:
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
+        input_format: csv or json
+        **kwargs: pass through storage-specific options
+
+    Yields:
+        A generator of `dict`s loaded via `orjson`
+    """
+    if input_format == "csv":
+        yield from smart_stream_csv(uri, **kwargs)
+    else:
+        yield from smart_stream_json(uri, **kwargs)
+
+
 def smart_stream_models(
     uri: Uri, model: Type[M], input_format: Formats, **kwargs: Any
 ) -> MGenerator:
@@ -274,7 +306,8 @@ def smart_read(uri: Uri, mode: str | None = DEFAULT_MODE, **kwargs: Any) -> AnyS
     Return content for a given file-like key directly.
 
     Args:
-        uri: string or path-like key uri to open, e.g. `./local/data.txt` or `s3://mybucket/foo`
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
         mode: open mode, default `rb` for byte reading.
         **kwargs: pass through storage-specific options
 
@@ -292,7 +325,8 @@ def smart_write(
     Write content to a given file-like key directly.
 
     Args:
-        uri: string or path-like key uri to open, e.g. `./local/data.txt` or `s3://mybucket/foo`
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
         content: `str` or `bytes` content to write.
         mode: open mode, default `wb` for byte writing.
         **kwargs: pass through storage-specific options
@@ -302,6 +336,27 @@ def smart_write(
             content = content.encode()
     with smart_open(uri, mode, **kwargs) as fh:
         fh.write(content)
+
+
+def smart_write_csv(
+    uri: Uri,
+    items: Iterable[SDict],
+    mode: str | None = DEFAULT_WRITE_MODE,
+    **kwargs: Any,
+) -> None:
+    """
+    Write python data to csv
+
+    Args:
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
+        items: Iterable of dictionaries
+        mode: open mode, default `wb` for byte writing.
+        **kwargs: pass through storage-specific options
+    """
+    with Writer(uri, mode, output_format="csv", **kwargs) as writer:
+        for item in items:
+            writer.write(item)
 
 
 def smart_write_json(
@@ -314,17 +369,60 @@ def smart_write_json(
     Write python data to json
 
     Args:
-        uri: string or path-like key uri to open, e.g. `./local/data.txt` or `s3://mybucket/foo`
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
         items: Iterable of dictionaries
         mode: open mode, default `wb` for byte writing.
         **kwargs: pass through storage-specific options
     """
-    with smart_open(uri, mode, **kwargs) as fh:
+    with Writer(uri, mode, output_format="json", **kwargs) as writer:
         for item in items:
-            line = orjson.dumps(item, option=orjson.OPT_APPEND_NEWLINE)
-            if "b" not in mode:
-                line = line.decode()
-            fh.write(line)
+            writer.write(item)
+
+
+def smart_write_data(
+    uri: Uri,
+    items: Iterable[SDict],
+    mode: str | None = DEFAULT_WRITE_MODE,
+    output_format: Formats | None = "json",
+    **kwargs: Any,
+) -> None:
+    """
+    Write python data to json or csv
+
+    Args:
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
+        items: Iterable of dictionaries
+        mode: open mode, default `wb` for byte writing.
+        output_format: csv or json (default: json)
+        **kwargs: pass through storage-specific options
+    """
+    with Writer(uri, mode, output_format=output_format, **kwargs) as writer:
+        for item in items:
+            writer.write(item)
+
+
+def smart_write_models(
+    uri: Uri,
+    objects: Iterable[BaseModel],
+    mode: str | None = DEFAULT_WRITE_MODE,
+    output_format: Formats | None = "json",
+    **kwargs: Any,
+) -> None:
+    """
+    Write pydantic objects to json lines
+
+    Args:
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
+        objects: Iterable of pydantic objects
+        mode: open mode, default `wb` for byte writing.
+        **kwargs: pass through storage-specific options
+    """
+    with ModelWriter(uri, mode, output_format, **kwargs) as writer:
+        for obj in objects:
+            writer.write(obj)
 
 
 class Writer:
@@ -338,12 +436,13 @@ class Writer:
         mode: str | None = DEFAULT_WRITE_MODE,
         output_format: Formats | None = "json",
         fieldnames: list[str] | None = None,
+        **kwargs,
     ) -> None:
         if output_format not in (FORMAT_JSON, FORMAT_CSV):
             raise ValueError("Invalid output format, only csv or json allowed")
         mode = mode or DEFAULT_WRITE_MODE
         self.mode = mode.replace("b", "") if output_format == "csv" else mode
-        self.handler = SmartHandler(uri, mode=self.mode)
+        self.handler = SmartHandler(uri, mode=self.mode, **kwargs)
         self.fieldnames = fieldnames
         self.output_format = output_format
         self.csv_writer: csv.DictWriter | None = None
@@ -375,8 +474,8 @@ class ModelWriter(Writer):
     """
 
     def write(self, row: BaseModel) -> None:
-        row = row.model_dump(by_alias=True, mode="json")
-        return super().write(row)
+        data = row.model_dump(by_alias=True, mode="json")
+        return super().write(data)
 
 
 def logged_items(
@@ -384,7 +483,7 @@ def logged_items(
     action: str,
     chunk_size: int | None = 10_000,
     item_name: str | None = None,
-    logger: logging.Logger | None = None,
+    logger: logging.Logger | BoundLogger | None = None,
     **log_kwargs,
 ) -> Generator[T, None, None]:
     """

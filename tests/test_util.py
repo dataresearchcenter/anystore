@@ -2,6 +2,7 @@ import os
 from pathlib import Path, PosixPath
 
 import pytest
+from pydantic import BaseModel
 
 from anystore import smart_read, util
 
@@ -70,3 +71,52 @@ def test_util_checksum(tmp_path, fixtures_path):
         ch = util.make_checksum(i)
     assert ch == "ed3141878ed32d8a1d583e7ce7de323118b933d3"
     assert sys_ch == ch
+
+
+def test_util_dict_merge():
+    d1 = {"a": 1, "b": 2}
+    d2 = {"c": 3}
+    assert util.dict_merge(d1, d2) == {"a": 1, "b": 2, "c": 3}
+
+    d1 = {"a": 1, "b": 2}
+    d2 = {"a": 3}
+    assert util.dict_merge(d1, d2) == {"a": 3, "b": 2}
+
+    d1 = {"a": {"b": 1}}
+    d2 = {"a": {"c": "e"}}
+    assert util.dict_merge(d1, d2) == {"a": {"b": 1, "c": "e"}}
+
+    d1 = {"a": {"b": 1, "c": 2}, "f": "foo", "g": False}
+    d2 = {"a": {"b": 2}, "e": 4, "f": None}
+    assert util.dict_merge(d1, d2) == {
+        "a": {"b": 2, "c": 2},
+        "e": 4,
+        "f": "foo",
+        "g": False,
+    }
+
+    d1 = {
+        "read": {"options": {"skiprows": 1}, "uri": "-", "handler": "read_excel"},
+        "operations": [],
+        "write": {"options": {"foo": False}, "uri": "-", "handler": None},
+    }
+    d2 = {
+        "read": {"options": {"skiprows": 2}, "uri": "-", "handler": None},
+        "operations": [],
+        "write": {"options": {}, "uri": "-", "handler": None},
+    }
+    assert util.dict_merge(d1, d2) == {
+        "read": {"options": {"skiprows": 2}, "uri": "-", "handler": "read_excel"},
+        "write": {"options": {"foo": False}, "uri": "-"},
+    }
+
+
+def test_util_pydantic_merge():
+    class Config(BaseModel):
+        name: str
+        base_path: str | None = None
+
+    c1 = Config(name="test")
+    c2 = Config(name="test", base_path="/tmp/")
+    c = util.pydantic_merge(c1, c2)
+    assert str(c.base_path) == "/tmp/"

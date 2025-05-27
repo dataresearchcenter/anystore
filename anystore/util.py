@@ -1,14 +1,16 @@
 import hashlib
+import mimetypes
 import shutil
 from io import BytesIO, StringIO
 from os.path import splitext
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, TypeVar
 from urllib.parse import unquote, urljoin, urlparse, urlsplit, urlunsplit
 
 from banal import clean_dict as _clean_dict
-from banal import is_mapping
+from banal import ensure_dict, ensure_list, is_listish, is_mapping
 from pydantic import BaseModel
+from rigour.mime import normalize_mimetype
 
 from anystore.types import SDict, Uri
 
@@ -287,7 +289,7 @@ def get_extension(uri: Uri) -> str | None:
 
 def rm_rf(uri: Uri) -> None:
     """
-    like rm -rf, ignoring errors.
+    like `rm -rf`, ignoring errors.
     """
     try:
         p = Path(uri)
@@ -304,3 +306,50 @@ def model_dump(obj: BaseModel) -> SDict:
     Serialize a pydantic object to a dict by alias and json mode
     """
     return obj.model_dump(by_alias=True, mode="json")
+
+
+def guess_mimetype(key: Uri) -> str:
+    """
+    Guess the mimetype based on a file extension and normalize it via
+    `rigour.mime`
+    """
+    mtype, _ = mimetypes.guess_type(str(key))
+    return normalize_mimetype(mtype)
+
+
+def is_empty(value: Any) -> bool:
+    """Check if a value is empty from a human point of view"""
+    if isinstance(value, (bool, int)):
+        return False
+    if value == "":
+        return False
+    return not value
+
+
+def dict_merge(d1: dict[Any, Any], d2: dict[Any, Any]) -> dict[Any, Any]:
+    """Merge the second dict into the first but omit empty values"""
+    d1, d2 = clean_dict(d1), clean_dict(d2)
+    for key, value in d2.items():
+        if not is_empty(value):
+            if is_mapping(value):
+                value = ensure_dict(value)
+                d1[key] = dict_merge(d1.get(key, {}), value)
+            elif is_listish(value):
+                d1[key] = ensure_list(d1.get(key)) + ensure_list(value)
+            else:
+                d1[key] = value
+    return d1
+
+
+BM = TypeVar("BM", bound=BaseModel)
+
+
+def pydantic_merge(m1: BM, m2: BM) -> BM:
+    """Merge the second pydantic object into the first one"""
+    if m1.__class__ != m2.__class__:
+        raise ValueError(
+            f"Cannot merge: `{m1.__class__.__name__}` with `{m2.__class__.__name__}`"
+        )
+    return m1.__class__(
+        **dict_merge(m1.model_dump(mode="json"), m2.model_dump(mode="json"))
+    )
