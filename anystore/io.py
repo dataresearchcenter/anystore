@@ -131,7 +131,7 @@ def smart_open(
     uri: Uri,
     mode: str | None = DEFAULT_MODE,
     **kwargs: Any,
-) -> Generator[IO, None, None]:
+) -> Generator[IO[AnyStr], None, None]:
     """
     IO context similar to pythons built-in `open()`.
 
