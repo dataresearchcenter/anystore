@@ -2115,20 +2115,21 @@ files = [
 ]
 
 [[package]]
-name = "mkdocs-typer"
-version = "0.0.3"
-description = "An MkDocs extension to generate documentation for Typer command line applications"
+name = "mkdocs-typer2"
+version = "0.1.4"
+description = "Mkdocs plugin for generating Typer CLI docs"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "mkdocs_typer-0.0.3-py3-none-any.whl", hash = "sha256:b2a9a44da590a7100114fde4de9123fedfea692d229379984db20ee3b3f12d7c"},
-    {file = "mkdocs_typer-0.0.3.tar.gz", hash = "sha256:4dd37f024190a82aaf0f6c984faafb15167d34eab7e29a6a85e61362423a4eb7"},
+    {file = "mkdocs_typer2-0.1.4-py3-none-any.whl", hash = "sha256:8d269313647fa5a798a043e12ba5806c4c9253d348f753f5d18a6010d9699346"},
+    {file = "mkdocs_typer2-0.1.4.tar.gz", hash = "sha256:1e974bbe7717c42f747215270323196d6acd214aa383634cf237f746293c3b90"},
 ]
 
 [package.dependencies]
-markdown = "==3.*"
-typer = "==0.*"
+mkdocs = ">=1.6.1"
+pydantic = ">=2.9.2"
+typer = ">=0.12.5"
 
 [[package]]
 name = "mkdocstrings"
@@ -4610,4 +4611,4 @@ sql = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "58300304b675335f7b87e3a1dae54e40501ded25654158bbe01c477bd0a92a67"
+content-hash = "45782fece2dd8775601a31d59d56f407f32a12d0dcde1dee19201b15ad8c7b18"
