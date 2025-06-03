@@ -205,13 +205,13 @@ def smart_stream_csv(uri: Uri, **kwargs: Any) -> SDictGenerator:
     Args:
         uri: string or path-like key uri to open, e.g. `./local/data.txt` or
             `s3://mybucket/foo`
-        mode: open mode, default `rb` for byte reading.
         **kwargs: pass through storage-specific options
 
     Yields:
         A generator of `dict`s loaded via `csv.DictReader`
     """
-    with smart_open(uri, mode="r") as f:
+    kwargs["mode"] = "r"
+    with smart_open(uri, **kwargs) as f:
         yield from csv.DictReader(f)
 
 
