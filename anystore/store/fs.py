@@ -45,9 +45,12 @@ class Store(BaseStore):
         data = self._fs.info(key)
         # FIXME fsspec http no headers?
         if self.is_http:
-            res = httpx.head(key)
-            if "last-modified" in res.headers:
-                data["updated_at"] = parse_date(res.headers["last-modified"])
+            try:
+                res = httpx.head(key)
+                if "last-modified" in res.headers:
+                    data["updated_at"] = parse_date(res.headers["last-modified"])
+            except httpx.ReadTimeout:
+                pass
         ts = data.pop("created", None)
         data["updated_at"] = data.get("updated_at") or data.pop(
             "LastModified", None
