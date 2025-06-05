@@ -120,3 +120,8 @@ def test_util_pydantic_merge():
     c2 = Config(name="test", base_path="/tmp/")
     c = util.pydantic_merge(c1, c2)
     assert str(c.base_path) == "/tmp/"
+
+
+def test_util_uri_to_path():
+    path = Path("/tmp/foo")
+    assert util.uri_to_path("/tmp/foo") == path

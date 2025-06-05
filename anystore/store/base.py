@@ -14,6 +14,7 @@ from urllib.parse import unquote
 
 from anystore.exceptions import DoesNotExist, ReadOnlyError
 from anystore.io import DEFAULT_MODE
+from anystore.logging import get_logger
 from anystore.model import Stats, StoreModel
 from anystore.serialize import Mode, from_store, to_store
 from anystore.settings import Settings
@@ -22,6 +23,8 @@ from anystore.types import Model, Uri
 from anystore.util import DEFAULT_HASH_ALGORITHM, clean_dict, make_checksum
 
 settings = Settings()
+
+log = get_logger(__name__)
 
 
 def check_readonly(func: Callable):
@@ -214,10 +217,19 @@ class BaseStore(StoreModel, AbstractBackend):
         Returns:
             Key metadata
         """
-        stats = self._info(self.get_key(key))
+        try:
+            stats = self._info(self.get_key(key))
+            stats = stats.model_dump()
+        except Exception as e:
+            log.warn(
+                f"Cannot get info: `{e.__class__.__name__}`: {e}",
+                key=key,
+                store=self.uri,
+            )
+            stats = {"size": 0}
         key = str(key)
         return Stats(
-            **stats.model_dump(),
+            **stats,
             name=Path(key).name,
             store=str(self.uri),
             key=key,

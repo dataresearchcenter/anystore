@@ -193,6 +193,12 @@ def join_relpaths(*parts: str) -> str:
     return "/".join((p.strip("/") for p in parts if p)).strip("/")
 
 
+def uri_to_path(uri: Uri) -> Path:
+    uri = ensure_uri(uri)
+    uri = urlunsplit(["", *urlsplit(uri)[1:]])
+    return Path(uri)
+
+
 def make_checksum(io: BinaryIO, algorithm: str = DEFAULT_HASH_ALGORITHM) -> str:
     """
     Calculate checksum for bytes input for given algorithm

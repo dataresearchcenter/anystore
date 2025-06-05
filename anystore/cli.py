@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 import typer
 from rich import print
@@ -29,7 +29,7 @@ class ErrorHandler:
     def __init__(self, logger: BoundLogger | None = None) -> None:
         self.log = logger
 
-    def __enter__(self):
+    def __enter__(self) -> Any:
         pass
 
     def __exit__(self, e, msg, _):

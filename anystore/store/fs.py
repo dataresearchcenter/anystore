@@ -5,7 +5,7 @@ Store backend using any file-like location usable via `fsspec`
 import re
 from datetime import datetime
 from functools import cached_property
-from typing import IO, ContextManager, Generator
+from typing import IO, AnyStr, ContextManager, Generator
 
 import fsspec
 import httpx
@@ -45,9 +45,12 @@ class Store(BaseStore):
         data = self._fs.info(key)
         # FIXME fsspec http no headers?
         if self.is_http:
-            res = httpx.head(key)
-            if "last-modified" in res.headers:
-                data["updated_at"] = parse_date(res.headers["last-modified"])
+            try:
+                res = httpx.head(key)
+                if "last-modified" in res.headers:
+                    data["updated_at"] = parse_date(res.headers["last-modified"])
+            except httpx.ReadTimeout:
+                pass
         ts = data.pop("created", None)
         data["updated_at"] = data.get("updated_at") or data.pop(
             "LastModified", None
@@ -62,7 +65,7 @@ class Store(BaseStore):
     def _get_key_prefix(self) -> str:
         return str(self.uri).rstrip("/")
 
-    def _open(self, key: str, **kwargs) -> ContextManager[IO]:
+    def _open(self, key: str, **kwargs) -> ContextManager[IO[AnyStr]]:
         return smart_open(key, **kwargs)
 
     def _iterate_keys(

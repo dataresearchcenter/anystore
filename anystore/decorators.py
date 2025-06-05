@@ -24,6 +24,8 @@ See below for reference details.
 """
 
 import functools
+import random
+import time
 from typing import Any, Callable, Type
 
 from pydantic import BaseModel
@@ -167,17 +169,66 @@ def async_anycache(func=None, **kwargs):
     return _decorator(func)
 
 
+def _error_handler(
+    func: Callable[..., Any],
+    logger: BoundLogger | None = None,
+    max_retries: int | None = 1,
+    backoff_factor: int | None = 2,
+    backoff_random: bool | None = True,
+    *args,
+    **kwargs,
+) -> Any:
+    _log = logger or log
+    retry = 0
+    retries = max_retries or 1
+    exc: Exception | None = None
+    while retry < retries:
+        retry += 1
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            backoff = retry
+            if backoff_random:
+                backoff = backoff + random.random()
+            backoff = backoff ** (backoff_factor or 2)
+            exc = e
+            _log.error(
+                f"{e.__class__.__name__}: {e}",
+                args=args,
+                retry=retry,
+                max_retries=retries,
+                backoff=backoff,
+                **kwargs,
+            )
+            if retry <= retries:
+                time.sleep(backoff)
+
+    if exc is not None:
+        _log.error(
+            f"{exc.__class__.__name__}: {exc} [MAX RETRIES REACHED]",
+            args=args,
+            retry=retry,
+            **kwargs,
+        )
+        if settings.debug:
+            raise exc
+
+
 def error_handler(
-    func: Callable[..., Any] | None = None, logger: BoundLogger | None = None
+    func: Callable[..., Any] | None = None,
+    logger: BoundLogger | None = None,
+    max_retries: int | None = 1,
+    backoff_factor: int | None = 2,
+    backoff_random: bool | None = True,
 ) -> Callable[..., Any]:
     """
-    Wrap any execution into an error handler that catches Exceptions. If in
-    debug mode (env var `DEBUG=1`) it will raise the exception, otherwise log
-    the error.
+    Wrap any execution into an error handler that catches Exceptions and
+    optional retries. If in debug mode (env var `DEBUG=1`) it will raise the
+    exception, otherwise log the error after `max_retries`.
 
     Example:
         ```python
-        @error_handler
+        @error_handler(max_retries=3)
         def compute(*args, **kwargs):
             return "result"
         ```
@@ -185,21 +236,26 @@ def error_handler(
     Args:
         func: The function to wrap
         logger: An optional `BoundLogger` instance to use as the error logger
+        max_retries: Maximum retries
+        backoff_factor: Increase backoff seconds by this power
+        backoff_random: Calculate a bit of randomness for backoff seconds
 
     Returns:
         Callable: The decorated function
     """
-    _log = logger or log
 
     def _decorator(func):
         @functools.wraps(func)
         def _inner(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                _log.error(f"{e.__class__.__name__}: {e}", args=args, **kwargs)
-                if settings.debug:
-                    raise e
+            return _error_handler(
+                func,
+                logger,
+                max_retries,
+                backoff_factor,
+                backoff_random,
+                *args,
+                **kwargs,
+            )
 
         return _inner
 
@@ -209,23 +265,29 @@ def error_handler(
 
 
 def async_error_handler(
-    func: Callable[..., Any] | None = None, logger: BoundLogger | None = None
+    func: Callable[..., Any] | None = None,
+    logger: BoundLogger | None = None,
+    max_retries: int | None = 1,
+    backoff_factor: int | None = 2,
+    backoff_random: bool | None = True,
 ) -> Callable[..., Any]:
     """
     Async implementation of the
     [@error_handler][anystore.decorators.error_handler] decorator
     """
-    _log = logger or log
 
     def _decorator(func):
         @functools.wraps(func)
         async def _inner(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                _log.error(f"{e.__class__.__name__}: {e}", args=args, **kwargs)
-                if settings.debug:
-                    raise e
+            return await _error_handler(
+                func,
+                logger,
+                max_retries,
+                backoff_factor,
+                backoff_random,
+                *args,
+                **kwargs,
+            )
 
         return _inner
 

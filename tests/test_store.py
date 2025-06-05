@@ -8,6 +8,7 @@ from rigour.mime import PLAIN
 
 from anystore.exceptions import DoesNotExist, ReadOnlyError
 from anystore.io import smart_read
+from anystore.model import StoreModel
 from anystore.store import Store, get_store, get_store_for_uri
 from anystore.store.base import BaseStore
 from anystore.store.memory import MemoryStore
@@ -264,6 +265,9 @@ def test_store_initialize(tmp_path, fixtures_path):
     # assert isinstance(get_store("postgresql:///db"), SqlStore)
     # assert isinstance(get_store("mysql:///db"), SqlStore)
     assert isinstance(get_store("./store.zip"), ZipStore)
+
+    store = StoreModel(uri="memory:///").to_store()
+    assert isinstance(store, MemoryStore)
 
 
 def test_store_virtual(fixtures_path):

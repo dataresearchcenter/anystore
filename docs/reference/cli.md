@@ -1,4 +1,3 @@
-::: mkdocs-typer
+::: mkdocs-typer2
     :module: anystore.cli
-    :prog_name: anystore
-    :command: cli
+    :name: anystore
