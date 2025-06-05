@@ -238,7 +238,7 @@ def error_handler(
         logger: An optional `BoundLogger` instance to use as the error logger
         max_retries: Maximum retries
         backoff_factor: Increase backoff seconds by this power
-        backoff_randum: Calculate a bit of randomness for backoff seconds
+        backoff_random: Calculate a bit of randomness for backoff seconds
 
     Returns:
         Callable: The decorated function
