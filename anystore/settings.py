@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="anystore_",
         env_nested_delimiter="__",
-        nested_model_default_partial_update=True,
+        env_file=".env",
+        extra="ignore",
     )
 
     uri: str = ".anystore"

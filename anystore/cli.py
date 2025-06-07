@@ -179,3 +179,9 @@ def cli_csv2json(
         with Writer(o) as w:
             for row in smart_stream_csv(i):
                 w.write(row)
+
+
+@cli.command("settings")
+def cli_settings():
+    """Show current runtime settings"""
+    console.print(settings)
