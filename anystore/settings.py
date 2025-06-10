@@ -2,9 +2,38 @@ from multiprocessing import cpu_count
 from typing import Any
 
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings as _BaseSettings
+from pydantic_settings import SettingsConfigDict
 
 from anystore.serialize import Mode
+
+
+class BaseSettings(_BaseSettings):
+    """
+    Base settings that are not app-specific and can be subclassed in other
+    applications
+    """
+
+    debug: bool = Field(alias="debug", default=False)
+    """Enable debug mode"""
+
+    redis_debug: bool = Field(alias="redis_debug", default=False)
+    """Use fakeredis when using redis backend"""
+
+    log_json: bool = Field(alias="log_json", default=False)
+    """Enable json log format"""
+
+    log_level: str = Field(alias="log_level", default="info")
+    """Log level (debug, info, warning, error)"""
+
+    worker_threads: int = Field(alias="worker_threads", default=cpu_count())
+    """Default number of threads to use for workers"""
+
+    worker_heartbeat: int = Field(alias="worker_heartbeat", default=15)
+    """Default heartbeat for worker logging"""
+
+    use_cache: bool = Field(alias="cache", default=True)
+    """Globally enable or disable caching (used in @anycache decorator)"""
 
 
 class Settings(BaseSettings):
@@ -23,7 +52,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="anystore_",
         env_nested_delimiter="__",
-        nested_model_default_partial_update=True,
+        env_file=".env",
+        extra="ignore",
     )
 
     uri: str = ".anystore"
@@ -46,24 +76,3 @@ class Settings(BaseSettings):
 
     backend_config: dict[str, Any] = {}
     """Arbitrary backend config to pass through"""
-
-    debug: bool = Field(alias="debug", default=False)
-    """Enable debug mode"""
-
-    redis_debug: bool = Field(alias="redis_debug", default=False)
-    """Use fakeredis when using redis backend"""
-
-    log_json: bool = Field(alias="log_json", default=False)
-    """Enable json log format"""
-
-    log_level: str = Field(alias="log_level", default="info")
-    """Log level (debug, info, warning, error)"""
-
-    worker_threads: int = Field(alias="worker_threads", default=cpu_count())
-    """Default number of threads to use for workers"""
-
-    worker_heartbeat: int = Field(alias="worker_heartbeat", default=15)
-    """Default heartbeat for worker logging"""
-
-    use_cache: bool = Field(alias="cache", default=True)
-    """Globally enable or disable caching (used in @anycache decorator)"""

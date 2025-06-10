@@ -1,10 +1,16 @@
 import asyncio
+import time
 from datetime import datetime
 
 import pytest
 from pydantic import BaseModel
 
-from anystore.decorators import anycache, async_anycache
+from anystore.decorators import (
+    anycache,
+    async_anycache,
+    async_error_handler,
+    error_handler,
+)
 from anystore.store import get_store
 from anystore.util import make_signature_key
 
@@ -121,3 +127,28 @@ def test_decorator_cache_disabled(monkeypatch):
 
     monkeypatch.setenv("CACHE", "1")
     assert new_res == get_result(1)
+
+
+def test_decorator_error_handler():
+    @error_handler(max_retries=2)
+    def error():
+        raise Exception
+
+    start = time.time()
+    try:
+        error()
+    except Exception:
+        pass
+    assert time.time() - start > 5  # 1.x + 2.x*2
+
+    # FIXME
+    # @async_error_handler(max_retries=2)
+    # async def async_error():
+    #     raise Exception
+
+    # start = time.time()
+    # try:
+    #     async_error()
+    # except Exception:
+    #     pass
+    # assert time.time() - start > 5  # 1.x + 2.x*2

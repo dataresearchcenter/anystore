@@ -30,8 +30,6 @@ import logging
 import sys
 from enum import StrEnum
 from io import BytesIO, StringIO
-from os import PathLike
-from pathlib import Path
 from typing import (
     IO,
     Any,
@@ -56,15 +54,15 @@ from structlog.stdlib import BoundLogger
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
 from anystore.types import M, MGenerator, SDict, SDictGenerator
-from anystore.util import ensure_uri
+from anystore.types import Uri as _Uri
+from anystore.util import clean_dict, ensure_uri
 
 log = get_logger(__name__)
 
 DEFAULT_MODE = "rb"
 DEFAULT_WRITE_MODE = "wb"
 
-Uri: TypeAlias = PathLike | Path | BinaryIO | TextIO | str
-GenericIO: TypeAlias = OpenFile | TextIO | BinaryIO
+Uri: TypeAlias = _Uri | BinaryIO | TextIO
 T = TypeVar("T")
 Formats = Literal["csv", "json"]
 FORMAT_CSV = "csv"
@@ -131,7 +129,7 @@ def smart_open(
     uri: Uri,
     mode: str | None = DEFAULT_MODE,
     **kwargs: Any,
-) -> Generator[IO, None, None]:
+) -> Generator[IO[AnyStr], None, None]:
     """
     IO context similar to pythons built-in `open()`.
 
@@ -205,13 +203,13 @@ def smart_stream_csv(uri: Uri, **kwargs: Any) -> SDictGenerator:
     Args:
         uri: string or path-like key uri to open, e.g. `./local/data.txt` or
             `s3://mybucket/foo`
-        mode: open mode, default `rb` for byte reading.
         **kwargs: pass through storage-specific options
 
     Yields:
         A generator of `dict`s loaded via `csv.DictReader`
     """
-    with smart_open(uri, mode="r") as f:
+    kwargs["mode"] = "r"
+    with smart_open(uri, **kwargs) as f:
         yield from csv.DictReader(f)
 
 
@@ -408,21 +406,46 @@ def smart_write_models(
     objects: Iterable[BaseModel],
     mode: str | None = DEFAULT_WRITE_MODE,
     output_format: Formats | None = "json",
+    clean: bool | None = False,
     **kwargs: Any,
 ) -> None:
     """
-    Write pydantic objects to json lines
+    Write pydantic objects to json lines or csv
 
     Args:
         uri: string or path-like key uri to open, e.g. `./local/data.txt` or
             `s3://mybucket/foo`
         objects: Iterable of pydantic objects
         mode: open mode, default `wb` for byte writing.
+        clean: Apply [clean_dict][anystore.util.clean_dict]
         **kwargs: pass through storage-specific options
     """
-    with ModelWriter(uri, mode, output_format, **kwargs) as writer:
+    with ModelWriter(uri, mode, output_format, clean=clean, **kwargs) as writer:
         for obj in objects:
             writer.write(obj)
+
+
+def smart_write_model(
+    uri: Uri,
+    obj: BaseModel,
+    mode: str | None = DEFAULT_WRITE_MODE,
+    output_format: Formats | None = "json",
+    clean: bool | None = False,
+    **kwargs: Any,
+) -> None:
+    """
+    Write a single pydantic object to the target
+
+    Args:
+        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
+            `s3://mybucket/foo`
+        obj: Pydantic object
+        mode: open mode, default `wb` for byte writing.
+        clean: Apply [clean_dict][anystore.util.clean_dict]
+        **kwargs: pass through storage-specific options
+    """
+    with ModelWriter(uri, mode, output_format, clean=clean, **kwargs) as writer:
+        writer.write(obj)
 
 
 class Writer:
@@ -436,6 +459,7 @@ class Writer:
         mode: str | None = DEFAULT_WRITE_MODE,
         output_format: Formats | None = "json",
         fieldnames: list[str] | None = None,
+        clean: bool | None = False,
         **kwargs,
     ) -> None:
         if output_format not in (FORMAT_JSON, FORMAT_CSV):
@@ -445,6 +469,7 @@ class Writer:
         self.handler = SmartHandler(uri, mode=self.mode, **kwargs)
         self.fieldnames = fieldnames
         self.output_format = output_format
+        self.clean = clean
         self.csv_writer: csv.DictWriter | None = None
 
     def __enter__(self) -> Self:
@@ -460,6 +485,8 @@ class Writer:
             self.csv_writer.writeheader()
 
         if self.output_format == "json":
+            if self.clean:
+                row = clean_dict(row)
             line = orjson.dumps(row, option=orjson.OPT_APPEND_NEWLINE)
             if "b" not in self.mode:
                 line = line.decode()

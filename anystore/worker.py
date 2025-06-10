@@ -1,18 +1,18 @@
 import sys
 import threading
 import time
+import uuid
 from collections import Counter
 from datetime import datetime, timedelta
 from multiprocessing import cpu_count
 from queue import Queue
-from typing import Any, Callable, Generator, Type
+from typing import Any, Callable, Generator, Self, Type
 
-from pydantic import BaseModel
+from pydantic import UUID4, BaseModel, field_validator
 
 from anystore.logging import get_logger
 from anystore.settings import Settings
 
-log = get_logger(__name__)
 settings = Settings()
 
 
@@ -30,7 +30,11 @@ class RaisingThread(threading.Thread):
             raise self._exc
 
 
-class WorkerStatus(BaseModel):
+class WorkerRun(BaseModel):
+    """A long running worker status. Can be subclassed to include more run
+    specific metadata"""
+
+    run_id: UUID4
     started: datetime | None = None
     stopped: datetime | None = None
     last_updated: datetime | None = None
@@ -41,12 +45,14 @@ class WorkerStatus(BaseModel):
     exc: str | None = None
     took: timedelta = timedelta()
 
+    @field_validator("run_id", mode="before")
+    @classmethod
+    def ensure_run_id(cls, value: UUID4 | None = None) -> UUID4:
+        """Give a manual uuid4 style id or create one"""
+        return value or uuid.uuid4()
+
     def touch(self) -> None:
         self.last_updated = datetime.now()
-
-    def start(self) -> None:
-        self.running = True
-        self.started = datetime.now()
 
     def stop(self, exc: Exception | None = None) -> None:
         self.running = False
@@ -54,6 +60,15 @@ class WorkerStatus(BaseModel):
         self.exc = str(exc)
         if self.started and self.stopped:
             self.took = self.stopped - self.started
+
+    @classmethod
+    def start(cls, **kwargs) -> Self:
+        kwargs["run_id"] = cls.ensure_run_id(kwargs.get("run_id"))
+        run = cls(**kwargs)
+        run.started = datetime.now()
+        run.running = True
+        run.touch()
+        return run
 
 
 class Worker:
@@ -63,9 +78,9 @@ class Worker:
         tasks: Generator[Any, None, None] | None = None,
         handle: Callable | None = None,
         handle_error: Callable | None = None,
-        job_id: str | None = None,
+        run_id: str | None = None,
         heartbeat: int | None = settings.worker_heartbeat,
-        status_model: Type[WorkerStatus] | None = WorkerStatus,
+        status_model: Type[WorkerRun] | None = WorkerRun,
     ) -> None:
         self.consumer_threads = max(2, threads or cpu_count()) - 1
         self.queue = Queue()
@@ -75,10 +90,11 @@ class Worker:
         self.handle_error = handle_error
         self.lock = threading.Lock()
         self.counter = Counter()
-        self.status_model = status_model or WorkerStatus
-        self.status = status_model() if status_model else WorkerStatus()
-        self.job_id = job_id or f"{self.__class__.__name__}-{time.time()}"
+        self.status_model = status_model or WorkerRun
+        self.status: WorkerRun
+        self.run_id = run_id
         self.heartbeat = heartbeat or settings.worker_heartbeat
+        self.log = get_logger(f"{__name__}.{self.__class__.__name__}", run_id=run_id)
 
     def get_tasks(self) -> Generator[Any, None, None]:
         if self.tasks is None:
@@ -138,14 +154,14 @@ class Worker:
 
     def log_status(self) -> None:
         status = self.get_status()
-        log.info(f"[{self.job_id}] 💚 ", **status.model_dump(mode="json"))
+        self.log.info(f"[{self.status.run_id}] 💚 ", **status.model_dump(mode="json"))
 
-    def get_status(self) -> WorkerStatus:
+    def get_status(self) -> WorkerRun:
         return self.status_model(**{**self.status.model_dump(), **self.counter})
 
     def exit(self, exc: Exception | None = None, status: int | None = 0):
         if exc is not None:
-            log.error(f"{exc.__class__.__name__}: `{exc}`", exception=exc)
+            self.log.error(f"{exc.__class__.__name__}: `{exc}`", exception=exc)
             if settings.debug:
                 raise exc
         sys.exit(status)
@@ -153,10 +169,10 @@ class Worker:
     def done(self) -> None:
         pass
 
-    def run(self) -> WorkerStatus:
+    def run(self) -> WorkerRun:
         try:
-            log.info(f"Using `{self.consumer_threads}` consumer threads.")
-            self.status.start()
+            self.log.info(f"Using `{self.consumer_threads}` consumer threads.")
+            self.status = self.status_model.start(run_id=self.run_id)
             if self.heartbeat > 0:
                 heartbeat = RaisingThread(target=self.beat)
                 heartbeat.start()

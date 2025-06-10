@@ -6,10 +6,10 @@ Pydantic model interfaces to initialize stores and handle metadata for keys.
 
 from datetime import datetime
 from functools import cached_property
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Self
 from urllib.parse import urlparse
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from rigour.mime import DEFAULT, normalize_mimetype
 
 from anystore.mixins import BaseModel
@@ -27,6 +27,9 @@ from anystore.util import (
 )
 
 settings = Settings()
+
+if TYPE_CHECKING:
+    from anystore.store.base import BaseStore
 
 
 class BaseStats(BaseModel):
@@ -48,6 +51,11 @@ class BaseStats(BaseModel):
     @classmethod
     def ensure_size(cls, value: Any) -> Any:
         return value or 0
+
+    @model_validator(mode="after")
+    def ensure_updated_at(self) -> Self:
+        self.updated_at = self.updated_at or self.created_at
+        return self
 
 
 class Stats(BaseStats):
@@ -156,3 +164,8 @@ class StoreModel(BaseModel):
     def ensure_uri(cls, v: Any) -> str:
         uri = ensure_uri(v)
         return uri.rstrip("/")
+
+    def to_store(self) -> "BaseStore":
+        from anystore.store import get_store
+
+        return get_store(**self.model_dump())

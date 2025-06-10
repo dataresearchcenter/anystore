@@ -8,6 +8,7 @@ from rigour.mime import PLAIN
 
 from anystore.exceptions import DoesNotExist, ReadOnlyError
 from anystore.io import smart_read
+from anystore.model import StoreModel
 from anystore.store import Store, get_store, get_store_for_uri
 from anystore.store.base import BaseStore
 from anystore.store.memory import MemoryStore
@@ -15,7 +16,7 @@ from anystore.store.redis import RedisStore
 from anystore.store.sql import SqlStore
 from anystore.store.virtual import get_virtual, open_virtual
 from anystore.store.zip import ZipStore
-from anystore.util import DEFAULT_HASH_ALGORITHM, join_uri
+from anystore.util import DEFAULT_HASH_ALGORITHM, ensure_uri, join_uri, uri_to_path
 from tests.conftest import setup_s3
 
 
@@ -110,11 +111,17 @@ def _test_store(fixtures_path, uri: str, can_delete: bool | None = True) -> bool
         )
 
     # ttl
-    if isinstance(store, (RedisStore, SqlStore, MemoryStore)):
+    if can_delete:
+        store.default_ttl = 1
         store.put("expired", 1, ttl=1)
         assert store.get("expired") == 1
         time.sleep(1)
         assert store.get("expired", raise_on_nonexist=False) is None
+        if isinstance(store, (RedisStore, SqlStore, MemoryStore)):
+            store.put("expired", 1, ttl=1)
+            assert store.get("expired") == 1
+            time.sleep(1)
+            assert store.get("expired", raise_on_nonexist=False) is None
 
     # checksum
     assert DEFAULT_HASH_ALGORITHM == "sha1"
@@ -265,20 +272,24 @@ def test_store_initialize(tmp_path, fixtures_path):
     # assert isinstance(get_store("mysql:///db"), SqlStore)
     assert isinstance(get_store("./store.zip"), ZipStore)
 
+    store = StoreModel(uri="memory:///").to_store()
+    assert isinstance(store, MemoryStore)
+
 
 def test_store_virtual(fixtures_path):
-    lorem = smart_read(fixtures_path / "lorem.txt")
     tmp = get_virtual()
     key = tmp.download(fixtures_path / "lorem.txt")
-    assert tmp.store.pop(key) == lorem
+    assert key == ensure_uri(fixtures_path / "lorem.txt")
 
     store = get_store(uri=fixtures_path)
     key = tmp.download("lorem.txt", store)
-    assert tmp.store.get(key) == lorem
+    assert key == ensure_uri(fixtures_path / "lorem.txt")
 
-    assert tmp.store.exists(key)
+    path = uri_to_path(key)
+    assert path.exists()
     tmp.cleanup()
-    assert not tmp.store.exists(key)
+    # still exists because local
+    assert path.exists()
 
     with get_virtual() as tmp:
         tmp.download(fixtures_path / "lorem.txt")

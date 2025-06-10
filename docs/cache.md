@@ -100,7 +100,7 @@ For all the parameters, [see reference](./reference/decorators.md)
 
 ## Example
 
-[`@anycache` is used for api view cache in `ftmq-api`](https://github.com/investigativedata/ftmstore-fastapi/blob/main/ftmstore_fastapi/views.py)
+[`@anycache` is used for api view cache in `ftmq-api`](https://github.com/dataresearchcenter/ftmstore-fastapi/blob/main/ftmstore_fastapi/views.py)
 
 ```python
 from anystore import get_store, anycache

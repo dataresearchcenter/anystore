@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 import typer
 from rich import print
@@ -29,7 +29,7 @@ class ErrorHandler:
     def __init__(self, logger: BoundLogger | None = None) -> None:
         self.log = logger
 
-    def __enter__(self):
+    def __enter__(self) -> Any:
         pass
 
     def __exit__(self, e, msg, _):
@@ -179,3 +179,9 @@ def cli_csv2json(
         with Writer(o) as w:
             for row in smart_stream_csv(i):
                 w.write(row)
+
+
+@cli.command("settings")
+def cli_settings():
+    """Show current runtime settings"""
+    console.print(settings)

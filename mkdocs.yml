@@ -51,7 +51,6 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
-  - mkdocs-typer
   - pymdownx.details
   - admonition
   - pymdownx.tasklist:
@@ -59,6 +58,8 @@ markdown_extensions:
 plugins:
   - search
   - autorefs
+  - mkdocs-typer2:
+      pretty: true
   - mkdocstrings:
       default_handler: python
       handlers:
