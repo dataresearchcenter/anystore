@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import IO, Generator
 
 from anystore.io import DEFAULT_MODE
+from anystore.model import Stats
 from anystore.store import get_store, get_store_for_uri
 from anystore.store.base import BaseStore
 from anystore.types import Uri
@@ -23,6 +24,8 @@ class VirtualStore:
     def download(self, uri: Uri, store: BaseStore | None = None, **kwargs) -> str:
         if store is None:
             store, uri = get_store_for_uri(uri, serialization_mode="raw")
+        if store.is_local:  # omit download
+            return store.get_key(uri)
         with store.open(uri, mode=kwargs.pop("mode", "rb"), **kwargs) as i:
             with self.store.open(uri, mode="wb") as o:
                 o.write(i.read())
@@ -49,7 +52,8 @@ def get_virtual(prefix: str | None = None, keep: bool | None = False) -> Virtual
 
 class VirtualIO(IO):
     checksum: str | None
-    path: Path | None
+    path: Path
+    info: Stats
 
 
 @contextlib.contextmanager
@@ -63,8 +67,10 @@ def open_virtual(
 ) -> Generator[VirtualIO, None, None]:
     """
     Download a file for temporary local processing and get its checksum and an
-    open handler. The file is cleaned up when leaving the context, unless
-    `keep=True` is given.
+    open handler. If the file itself is already on the local filesystem, the
+    actual file will be used. The file is cleaned up when leaving the context,
+    unless `keep=True` is given (except if it was a local file, it won't be
+    deleted in any case)
 
     Example:
         ```python
@@ -89,23 +95,82 @@ def open_virtual(
         **kwargs: pass through storage-specific options
 
     Yields:
-        A generic file-handler like context object, always in bytes mode. It has
-        2 extra attributes: `checksum` and the absolute temporary `path` as a
-        `pathlib.Path` object
+        A generic file-handler like context object. It has 3 extra attributes:
+        - `checksum` (if computed)
+        - the absolute temporary `path` as a `pathlib.Path` object
+        - [`info`][anystore.model.Stats] object
 
     """
-    tmp = VirtualStore(tmp_prefix, keep)
-    key = tmp.download(uri, store, **kwargs)
+    mode = kwargs.get("mode", DEFAULT_MODE)
+    if store is None:
+        store, uri = get_store_for_uri(uri)
+    info = store.info(uri)
+    if store.is_local:
+        tmp = None
+        open = store.open
+        path = uri_to_path(store.get_key(uri))
+    else:
+        tmp = get_virtual(tmp_prefix, keep)
+        uri = tmp.download(uri, store, **kwargs)
+        open = tmp.store.open
+        path = uri_to_path(tmp.store.get_key(uri))
     try:
-        with tmp.store.open(key, mode=kwargs.get("mode", DEFAULT_MODE)) as handler:
+        with open(uri, mode=mode) as handler:
             if checksum:
                 checksum = make_checksum(handler, checksum)
             else:
                 checksum = None
             handler.seek(0)
             handler.checksum = checksum
-            handler.path = uri_to_path(tmp.store.get_key(key))
+            handler.path = path
+            handler.info = info
             yield handler
     finally:
-        if not keep:
+        if not keep and tmp is not None:
+            tmp.cleanup()
+
+
+@contextlib.contextmanager
+def get_virtual_path(
+    uri: Uri,
+    store: BaseStore | None = None,
+    tmp_prefix: str | None = None,
+    keep: bool | None = False,
+    **kwargs,
+) -> Generator[Path, None, None]:
+    """
+    Download a file for temporary local processing and get its local path.  If
+    the file itself is already on the local filesystem, the actual file will be
+    used. The file is cleaned up when leaving the context, unless `keep=True` is
+    given (except if it was a local file, it won't be deleted in any case)
+
+    Example:
+        ```python
+        with get_virtual_path("http://example.org/test.txt") as path:
+            do_something(path)
+        ```
+
+    Args:
+        uri: Any uri fsspec can handle
+        store: An initialized store to fetch the uri from
+        tmp_prefix: Set a manual temporary prefix, otherwise random
+        keep: Don't delete the file after leaving context, default `False`
+        **kwargs: pass through storage-specific options
+
+    Yields:
+        The absolute temporary `path` as a `pathlib.Path` object
+    """
+    if store is None:
+        store, uri = get_store_for_uri(uri)
+    if store.is_local:
+        tmp = None
+        path = uri_to_path(store.get_key(uri))
+    else:
+        tmp = get_virtual(tmp_prefix, keep)
+        uri = tmp.download(uri, store, **kwargs)
+        path = uri_to_path(tmp.store.get_key(uri))
+    try:
+        yield path
+    finally:
+        if not keep and tmp is not None:
             tmp.cleanup()

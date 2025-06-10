@@ -16,7 +16,7 @@ from anystore.store.redis import RedisStore
 from anystore.store.sql import SqlStore
 from anystore.store.virtual import get_virtual, open_virtual
 from anystore.store.zip import ZipStore
-from anystore.util import DEFAULT_HASH_ALGORITHM, join_uri
+from anystore.util import DEFAULT_HASH_ALGORITHM, ensure_uri, join_uri, uri_to_path
 from tests.conftest import setup_s3
 
 
@@ -277,18 +277,19 @@ def test_store_initialize(tmp_path, fixtures_path):
 
 
 def test_store_virtual(fixtures_path):
-    lorem = smart_read(fixtures_path / "lorem.txt")
     tmp = get_virtual()
     key = tmp.download(fixtures_path / "lorem.txt")
-    assert tmp.store.pop(key) == lorem
+    assert key == ensure_uri(fixtures_path / "lorem.txt")
 
     store = get_store(uri=fixtures_path)
     key = tmp.download("lorem.txt", store)
-    assert tmp.store.get(key) == lorem
+    assert key == ensure_uri(fixtures_path / "lorem.txt")
 
-    assert tmp.store.exists(key)
+    path = uri_to_path(key)
+    assert path.exists()
     tmp.cleanup()
-    assert not tmp.store.exists(key)
+    # still exists because local
+    assert path.exists()
 
     with get_virtual() as tmp:
         tmp.download(fixtures_path / "lorem.txt")
