@@ -19,7 +19,7 @@ log = get_logger(__name__)
 
 
 def get_store(
-    uri: str | None = None, settings: Settings | None = None, **kwargs: Any
+    uri: Uri | None = None, settings: Settings | None = None, **kwargs: Any
 ) -> BaseStore:
     """
     Short-hand initializer for a new store. The call is cached during runtime if
