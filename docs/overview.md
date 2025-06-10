@@ -1,6 +1,6 @@
 `anystore` provides a simple high-level interface for _retrieving_ and _writing_ data in a _store_. Data is identified by a _key_. A diverse range of storage _backends_ is supported.
 
-This library is a collection of shared basic features used for [projects](https://investigativedata.io/projects) and [applications](https://github.com/investigativedata/) related to data storage, data streaming and data engineering.
+This library is a collection of shared basic features used for [projects](https://dataresearchcenter.io/projects) and [applications](https://github.com/dataresearchcenter/) related to data storage, data streaming and data engineering.
 
 ## Use cases
 
