@@ -111,11 +111,17 @@ def _test_store(fixtures_path, uri: str, can_delete: bool | None = True) -> bool
         )
 
     # ttl
-    if isinstance(store, (RedisStore, SqlStore, MemoryStore)):
+    if can_delete:
+        store.default_ttl = 1
         store.put("expired", 1, ttl=1)
         assert store.get("expired") == 1
         time.sleep(1)
         assert store.get("expired", raise_on_nonexist=False) is None
+        if isinstance(store, (RedisStore, SqlStore, MemoryStore)):
+            store.put("expired", 1, ttl=1)
+            assert store.get("expired") == 1
+            time.sleep(1)
+            assert store.get("expired", raise_on_nonexist=False) is None
 
     # checksum
     assert DEFAULT_HASH_ALGORITHM == "sha1"
