@@ -2,12 +2,9 @@ import random
 import threading
 import time
 from datetime import timedelta
-from io import BytesIO
 from typing import Any, Generator
 
-from anystore.decorators import anycache
 from anystore.io import smart_read, smart_write
-from anystore.store import get_store
 from anystore.worker import Worker, WorkerRun
 
 
