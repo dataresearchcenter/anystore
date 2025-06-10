@@ -6,12 +6,12 @@ from typing import Generator
 
 from anystore.logging import get_logger
 from anystore.store.base import BaseStore
-from anystore.worker import Worker, WorkerStatus
+from anystore.worker import Worker, WorkerRun
 
 log = get_logger(__name__)
 
 
-class MirrorStatus(WorkerStatus):
+class MirrorStatus(WorkerRun):
     skipped: int = 0
     mirrored: int = 0
 

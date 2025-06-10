@@ -8,7 +8,7 @@ from typing import Any, Generator
 from anystore.decorators import anycache
 from anystore.io import smart_read, smart_write
 from anystore.store import get_store
-from anystore.worker import Worker, WorkerStatus
+from anystore.worker import Worker, WorkerRun
 
 
 def test_worker(tmp_path):
@@ -66,7 +66,7 @@ def test_worker_errors():
 
 
 def test_worker_custom_status():
-    class Status(WorkerStatus):
+    class Status(WorkerRun):
         items: int = 0
 
     class TestWorker(Worker):
