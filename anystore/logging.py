@@ -1,7 +1,11 @@
+import functools
 import logging
 import sys
 from logging import Filter, LogRecord
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
+
+if TYPE_CHECKING:
+    from logging import _Level
 
 import structlog
 from structlog.contextvars import merge_contextvars
@@ -26,12 +30,28 @@ from anystore.settings import Settings
 settings = Settings()
 
 
-def get_logger(name: str, *args, **kwargs) -> BoundLogger:
-    return get_raw_logger(name, *args, **kwargs)
+def get_log_level(level: str | int | None = None) -> "_Level":
+    log_level = level or settings.log_level
+    if isinstance(log_level, str):
+        log_level = getattr(logging, log_level.upper())
+    return log_level
 
 
-def configure_logging(level: int = logging.INFO) -> None:
+def get_logger(name: str, **ctx) -> BoundLogger:
+    """Get a structlogger with prepopulated context"""
+    logger = get_raw_logger(name)
+    if ctx:
+        logger.debug = functools.partial(logger.debug, **ctx)
+        logger.info = functools.partial(logger.info, **ctx)
+        logger.warn = functools.partial(logger.warn, **ctx)
+        logger.error = functools.partial(logger.error, **ctx)
+        logger.exception = functools.partial(logger.exception, **ctx)
+    return logger
+
+
+def configure_logging(level: int | str | None = None) -> None:
     """Configure log levels and structured logging"""
+    log_level = get_log_level(level)
     shared_processors: List[Any] = [
         add_log_level,
         add_logger_name,
@@ -75,7 +95,7 @@ def configure_logging(level: int = logging.INFO) -> None:
 
     # handler for low level logs that should be sent to STDERR
     out_handler = logging.StreamHandler(sys.stderr)
-    out_handler.setLevel(level)
+    out_handler.setLevel(log_level)
     out_handler.addFilter(_MaxLevelFilter(logging.WARNING))
     out_handler.setFormatter(formatter)
     # handler for high level logs that should be sent to STDERR
@@ -84,7 +104,7 @@ def configure_logging(level: int = logging.INFO) -> None:
     error_handler.setFormatter(formatter)
 
     root_logger = logging.getLogger()
-    root_logger.setLevel(settings.log_level.upper())
+    root_logger.setLevel(log_level)
     root_logger.addHandler(out_handler)
     root_logger.addHandler(error_handler)
 
@@ -100,5 +120,5 @@ class _MaxLevelFilter(Filter):
     def __init__(self, highest_log_level: int) -> None:
         self._highest_log_level = highest_log_level
 
-    def filter(self, log_record: LogRecord) -> bool:
-        return log_record.levelno <= self._highest_log_level
+    def filter(self, record: LogRecord) -> bool:
+        return record.levelno <= self._highest_log_level
