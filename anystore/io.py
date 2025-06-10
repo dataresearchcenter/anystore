@@ -417,7 +417,7 @@ def smart_write_models(
             `s3://mybucket/foo`
         objects: Iterable of pydantic objects
         mode: open mode, default `wb` for byte writing.
-        clean: Apply [clean_dict][anystore.utils.clean_dict]
+        clean: Apply [clean_dict][anystore.util.clean_dict]
         **kwargs: pass through storage-specific options
     """
     with ModelWriter(uri, mode, output_format, clean=clean, **kwargs) as writer:
@@ -441,7 +441,7 @@ def smart_write_model(
             `s3://mybucket/foo`
         obj: Pydantic object
         mode: open mode, default `wb` for byte writing.
-        clean: Apply [clean_dict][anystore.utils.clean_dict]
+        clean: Apply [clean_dict][anystore.util.clean_dict]
         **kwargs: pass through storage-specific options
     """
     with ModelWriter(uri, mode, output_format, clean=clean, **kwargs) as writer:
