@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, BinaryIO, TypeVar
 from urllib.parse import unquote, urljoin, urlparse, urlsplit, urlunsplit
 
+import orjson
 from banal import clean_dict as _clean_dict
 from banal import ensure_dict, ensure_list, is_listish, is_mapping
 from pydantic import BaseModel
@@ -176,7 +177,7 @@ def join_uri(uri: Any, path: str) -> str:
     return urlunsplit([scheme, *parts])
 
 
-def join_relpaths(*parts: str) -> str:
+def join_relpaths(*parts: Uri) -> str:
     """
     Join relative paths, strip leading and trailing "/"
 
@@ -190,7 +191,7 @@ def join_relpaths(*parts: str) -> str:
     Returns:
         Joined relative path
     """
-    return "/".join((p.strip("/") for p in parts if p)).strip("/")
+    return "/".join((p.strip("/") for p in map(str, parts) if p)).strip("/")
 
 
 def uri_to_path(uri: Uri) -> Path:
@@ -307,11 +308,17 @@ def rm_rf(uri: Uri) -> None:
         pass
 
 
-def model_dump(obj: BaseModel) -> SDict:
+def model_dump(obj: BaseModel, clean: bool | None = False) -> SDict:
     """
     Serialize a pydantic object to a dict by alias and json mode
+
+    Args:
+        clean: Apply [clean_dict][anystore.utils.clean_dict]
     """
-    return obj.model_dump(by_alias=True, mode="json")
+    data = obj.model_dump(by_alias=True, mode="json")
+    if clean:
+        data = clean_dict(data)
+    return data
 
 
 def guess_mimetype(key: Uri) -> str:
@@ -359,3 +366,36 @@ def pydantic_merge(m1: BM, m2: BM) -> BM:
     return m1.__class__(
         **dict_merge(m1.model_dump(mode="json"), m2.model_dump(mode="json"))
     )
+
+
+def dump_json(
+    obj: SDict, clean: bool | None = False, newline: bool | None = False
+) -> bytes:
+    """
+    Dump a python dictionary to json bytest via orjson
+
+    Args:
+        obj: The data object (dictionary with string keys)
+        clean: Apply [clean_dict][anystore.utils.clean_dict]
+        newline: Add a linebreak
+    """
+    if clean:
+        obj = clean_dict(obj)
+    if newline:
+        return orjson.dumps(obj, option=orjson.OPT_APPEND_NEWLINE)
+    return orjson.dumps(obj)
+
+
+def dump_json_model(
+    obj: BaseModel, clean: bool | None = False, newline: bool | None = False
+) -> bytes:
+    """
+    Dump a pydantic obj to json bytest via orjson
+
+    Args:
+        obj: The pydantic object
+        clean: Apply [clean_dict][anystore.utils.clean_dict]
+        newline: Add a linebreak
+    """
+    data = model_dump(obj, clean)
+    return dump_json(data, newline=newline)
