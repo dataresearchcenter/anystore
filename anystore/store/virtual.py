@@ -1,7 +1,7 @@
 import contextlib
 import tempfile
 from pathlib import Path
-from typing import IO, Generator
+from typing import IO, Any, Generator
 
 from anystore.io import DEFAULT_MODE
 from anystore.model import Stats
@@ -63,7 +63,7 @@ def open_virtual(
     tmp_prefix: str | None = None,
     keep: bool | None = False,
     checksum: str | None = DEFAULT_HASH_ALGORITHM,
-    **kwargs,
+    **kwargs: Any,
 ) -> Generator[VirtualIO, None, None]:
     """
     Download a file for temporary local processing and get its checksum and an
@@ -96,9 +96,9 @@ def open_virtual(
 
     Yields:
         A generic file-handler like context object. It has 3 extra attributes:
-        - `checksum` (if computed)
-        - the absolute temporary `path` as a `pathlib.Path` object
-        - [`info`][anystore.model.Stats] object
+            - `checksum` (if computed)
+            - the absolute temporary `path` as a `pathlib.Path` object
+            - [`info`][anystore.model.Stats] object
 
     """
     mode = kwargs.get("mode", DEFAULT_MODE)
@@ -136,7 +136,7 @@ def get_virtual_path(
     store: BaseStore | None = None,
     tmp_prefix: str | None = None,
     keep: bool | None = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> Generator[Path, None, None]:
     """
     Download a file for temporary local processing and get its local path.  If

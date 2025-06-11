@@ -145,7 +145,9 @@ with target.open("foo/content.txt") as fh:
 
 ## Process remote files locally
 
-Download a remote file for temporary use. The local file will be cleaned up when leaving the context.
+### Get a handler
+
+Download a remote file for temporary use and get an open file handler. The local file will be cleaned up when leaving the context.
 
 ```python
 from anystore import get_store
@@ -157,3 +159,20 @@ for key in remote.iterate_keys(glob="*.pdf"):
     with open_virtual(key, remote) as fh:
         process_pdf(fh)
 ```
+
+### Get a temporary local path
+
+Download a remote file for temporary use and get it's local path. The local file will be cleaned up when leaving the context.
+
+```python
+from anystore import get_store
+from anystore.virtual import get_virtual_path
+
+remote = get_store("s3://my_bucket")
+
+for key in remote.iterate_keys(glob="*.pdf"):
+    with get_virtual_path(key, remote) as path:
+        do_something(path)
+```
+
+[Reference](./reference/virtual.md)
