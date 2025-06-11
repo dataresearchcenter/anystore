@@ -271,6 +271,22 @@ def make_signature_key(*args: Any, **kwargs: Any) -> str:
     return make_data_checksum((args, kwargs))
 
 
+def make_uri_key(uri: Uri) -> str:
+    """
+    Make a verbose key usable for caching. It strips the scheme, uses host and
+    path as key parts and creates a checksum for the uri (including fragments,
+    params, etc.). This is useful for invalidating a cache store partially by
+    deleting keys by given host or path prefixes.
+
+    Examples:
+        >>> make_uri_key("https://example.org/foo/bar#fragment?a=b&c")
+        "example.org/foo/bar/ecdb319854a7b223d72e819949ed37328fe034a0"
+    """
+    uri = str(uri)
+    parsed = urlparse(uri)
+    return join_relpaths(parsed.netloc, parsed.path, make_data_checksum(uri))
+
+
 def get_extension(uri: Uri) -> str | None:
     """
     Extract file extension from given uri.

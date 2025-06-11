@@ -125,3 +125,11 @@ def test_util_pydantic_merge():
 def test_util_uri_to_path():
     path = Path("/tmp/foo")
     assert util.uri_to_path("/tmp/foo") == path
+
+
+def test_util_make_uri_key():
+    # ensure stability
+    assert (
+        util.make_uri_key("https://example.org/foo/bar#fragment?a=b&c")
+        == "example.org/foo/bar/ecdb319854a7b223d72e819949ed37328fe034a0"
+    )
