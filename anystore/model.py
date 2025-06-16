@@ -108,6 +108,8 @@ class StoreModel(BaseModel):
 
     uri: Uri
     """Store base uri"""
+    key_prefix: str | None = None
+    """Global key prefix for all keys"""
     serialization_mode: Mode | None = settings.serialization_mode
     """Default serialization (auto, raw, pickle, json)"""
     serialization_func: Callable | None = None
@@ -122,7 +124,7 @@ class StoreModel(BaseModel):
     """Store `None` as value in store"""
     default_ttl: int | None = settings.default_ttl
     """Default ttl for keys (only backends that support it: redis, sql, ..)"""
-    backend_config: dict[str, Any] | None = None
+    backend_config: dict[str, Any] = {}
     """Backend-specific configuration to pass through for initialization"""
     readonly: bool | None = False
     """Consider this store as a read-only store, writing will raise an exception"""

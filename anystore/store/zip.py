@@ -90,9 +90,6 @@ class ZipStore(BaseStore):
         with self._get_handler("r") as reader:
             return BaseStats(**reader.info(key))
 
-    def _get_key_prefix(self) -> str:
-        return ""
-
     def _delete(self, key: str) -> None:
         raise ReadOnlyError(f"Can not delete `{key}`: ZipStore is append-only!")
 

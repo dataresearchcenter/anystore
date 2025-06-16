@@ -69,7 +69,10 @@ class Store(BaseStore):
         self._fs.delete(key)
 
     def _get_key_prefix(self) -> str:
-        return str(self.uri).rstrip("/")
+        base = str(self.uri).rstrip("/")
+        if self.key_prefix:
+            return join_uri(base, self.key_prefix)
+        return base
 
     def _open(self, key: str, **kwargs) -> ContextManager[IO[AnyStr]]:
         self._check_ttl(key)

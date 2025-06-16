@@ -184,6 +184,11 @@ def _test_store(fixtures_path, uri: str, can_delete: bool | None = True) -> bool
     store.put("nothing", 1)
     assert store.exists("nothing")
 
+    # prefix
+    store.key_prefix = "test-prefix"
+    assert store.get_key("foo").endswith("test-prefix/foo")
+    assert not store.exists("lorem.txt")
+
     return True
 
 

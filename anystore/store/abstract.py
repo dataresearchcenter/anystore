@@ -52,7 +52,7 @@ class AbstractBackend:
         """
         Get backend specific key prefix
         """
-        return ""
+        return self.key_prefix or ""
 
     def _iterate_keys(
         self,

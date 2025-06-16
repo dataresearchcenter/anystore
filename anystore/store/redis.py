@@ -70,9 +70,10 @@ class RedisStore(VirtualIOMixin, BaseStore):
         self._con.delete(key)
 
     def _get_key_prefix(self) -> str:
-        if self.backend_config is not None:
-            return self.backend_config.get("redis_prefix") or "anystore"
-        return "anystore"
+        base = self.backend_config.get("redis_prefix") or "anystore"
+        if self.key_prefix:
+            return join_relpaths(base, self.key_prefix)
+        return base
 
     def _iterate_keys(
         self,

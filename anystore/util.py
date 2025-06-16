@@ -73,6 +73,7 @@ def ensure_uri(uri: Any, http_unquote: bool | None = True) -> str:
         assert util.ensure_uri(Path("./foo")).startswith("file:///")
         assert util.ensure_uri("/foo") == "file:///foo"
         ```
+
     Args:
         uri: uri-like string
         http_unquote: Return unquoted uri, manually disable for some http edge cases

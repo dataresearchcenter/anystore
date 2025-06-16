@@ -175,9 +175,6 @@ class SqlStore(VirtualIOMixin, BaseStore):
         stmt = delete(self._table).where(self._table.c.key == key)
         conn.execute(stmt)
 
-    def _get_key_prefix(self) -> str:
-        return ""
-
     def _iterate_keys(
         self,
         prefix: str | None = None,
