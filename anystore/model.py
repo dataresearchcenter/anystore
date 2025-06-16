@@ -57,6 +57,11 @@ class BaseStats(BaseModel):
         self.updated_at = self.updated_at or self.created_at
         return self
 
+    @model_validator(mode="after")
+    def ensure_created_at(self) -> Self:
+        self.created_at = self.created_at or self.updated_at
+        return self
+
 
 class Stats(BaseStats):
     """Meta information for a store key"""
