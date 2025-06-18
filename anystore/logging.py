@@ -49,6 +49,7 @@ def get_logger(name: str, **ctx) -> BoundLogger:
     return logger
 
 
+@functools.cache
 def configure_logging(level: int | str | None = None) -> None:
     """Configure log levels and structured logging"""
     log_level = get_log_level(level)
