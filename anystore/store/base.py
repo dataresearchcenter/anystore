@@ -20,7 +20,12 @@ from anystore.serialize import Mode, from_store, to_store
 from anystore.settings import Settings
 from anystore.store.abstract import AbstractBackend
 from anystore.types import Model, Uri
-from anystore.util import DEFAULT_HASH_ALGORITHM, clean_dict, make_checksum
+from anystore.util import (
+    DEFAULT_HASH_ALGORITHM,
+    clean_dict,
+    make_checksum,
+    path_from_uri,
+)
 
 settings = Settings()
 
@@ -378,6 +383,13 @@ class BaseStore(StoreModel, AbstractBackend):
         now = datetime.now()
         self.put(key, now, **kwargs)
         return now
+
+    def ensure_parent(self, key: Uri) -> None:
+        """Ensure existence of parent path. This mostly only is relevant for
+        stores on local filesystem"""
+        if self.is_local:
+            parent = path_from_uri(self.get_key(key)).parent
+            parent.mkdir(exist_ok=True, parents=True)
 
 
 class VirtualIOMixin:
