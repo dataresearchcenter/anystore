@@ -172,7 +172,7 @@ class StoreModel(BaseModel):
         uri = ensure_uri(v)
         return uri.rstrip("/")
 
-    def to_store(self) -> "BaseStore":
+    def to_store(self, **kwargs) -> "BaseStore":
         from anystore.store import get_store
 
-        return get_store(**self.model_dump())
+        return get_store(**{**self.model_dump(), **kwargs})
