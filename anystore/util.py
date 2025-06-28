@@ -8,6 +8,7 @@ from typing import Any, BinaryIO, TypeVar
 from urllib.parse import unquote, urljoin, urlparse, urlsplit, urlunsplit
 
 import orjson
+import yaml
 from banal import clean_dict as _clean_dict
 from banal import ensure_dict, ensure_list, is_listish, is_mapping
 from pydantic import BaseModel
@@ -389,7 +390,7 @@ def dump_json(
     obj: SDict, clean: bool | None = False, newline: bool | None = False
 ) -> bytes:
     """
-    Dump a python dictionary to json bytest via orjson
+    Dump a python dictionary to json bytes via orjson
 
     Args:
         obj: The data object (dictionary with string keys)
@@ -407,7 +408,7 @@ def dump_json_model(
     obj: BaseModel, clean: bool | None = False, newline: bool | None = False
 ) -> bytes:
     """
-    Dump a pydantic obj to json bytest via orjson
+    Dump a pydantic obj to json bytes via orjson
 
     Args:
         obj: The pydantic object
@@ -416,3 +417,35 @@ def dump_json_model(
     """
     data = model_dump(obj, clean)
     return dump_json(data, newline=newline)
+
+
+def dump_yaml(obj: SDict, clean: bool | None = False, newline: bool | None = False):
+    """
+    Dump a python dictionary to bytes
+
+    Args:
+        obj: The data object (dictionary with string keys)
+        clean: Apply [clean_dict][anystore.util.clean_dict]
+        newline: Add a linebreak
+    """
+    if clean:
+        obj = clean_dict(obj)
+    data = yaml.dump(obj)
+    if newline:
+        data += "\n"
+    return data.encode()
+
+
+def dump_yaml_model(
+    obj: BaseModel, clean: bool | None = False, newline: bool | None = False
+) -> bytes:
+    """
+    Dump a pydantic obj to yaml bytes
+
+    Args:
+        obj: The pydantic object
+        clean: Apply [clean_dict][anystore.util.clean_dict]
+        newline: Add a linebreak
+    """
+    data = model_dump(obj, clean)
+    return dump_yaml(data, newline=newline)
