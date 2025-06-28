@@ -43,7 +43,7 @@ def get_store(
         **kwargs: pass through storage-specific options
 
     Returns:
-        A `Store` class
+        A `BaseStore` instance
     """
     settings = settings or Settings()
     kwargs = {**{"backend_config": settings.backend_config}, **kwargs}

@@ -31,6 +31,7 @@ A pydantic model class used for (de)serialization
 
 """
 
+from datetime import datetime
 from typing import Any, Callable, Literal, TypeAlias
 
 import cloudpickle
@@ -133,7 +134,11 @@ def from_store(
 
     # auto
     try:
-        return orjson.loads(value)
+        data = orjson.loads(value)
+        try:  # ISO timestamp
+            return datetime.fromisoformat(data)
+        except (TypeError, ValueError):
+            return data
     except (orjson.JSONDecodeError, TypeError, ValueError):
         try:
             return cloudpickle.loads(value)
