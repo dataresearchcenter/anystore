@@ -1,3 +1,4 @@
+from datetime import datetime
 from os import PathLike
 from pathlib import Path
 from typing import Any, AnyStr, Generator, Type, TypeAlias, TypeVar
@@ -9,6 +10,8 @@ Value: TypeAlias = str | bytes
 Model: TypeAlias = Type[BaseModel]
 M: TypeVar = TypeVar("M", bound="Model")
 SDict: TypeAlias = dict[str, Any]
+
+TS: TypeAlias = datetime
 
 StrGenerator: TypeAlias = Generator[str, None, None]
 BytesGenerator: TypeAlias = Generator[bytes, None, None]
