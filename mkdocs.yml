@@ -15,6 +15,7 @@ nav:
       - anystore.io: reference/io.md
       - anystore.store: reference/store.md
       - anystore.store.virtual: reference/virtual.md
+      - anystore.tags: reference/tags.md
       - anystore.model: reference/model.md
       - anystore.cli: reference/cli.md
       - anystore.serialize: reference/serialize.md

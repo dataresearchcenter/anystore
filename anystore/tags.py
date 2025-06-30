@@ -62,9 +62,10 @@ class Tags:
 
         Example:
             ```python
-            with tags.touch("run/1/succeed"):
+            with tags.touch("run/1/succeed") as now:
+                log.info(now)
                 long_running_action_that_might_fail()
-                # if it succeeds, the timestamp from the start will be stored
+                # if it succeeds, the timestamp from the start (`now`) will be stored
             ```
         """
         now = datetime.now()
