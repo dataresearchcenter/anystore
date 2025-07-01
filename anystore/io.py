@@ -29,7 +29,7 @@ import csv
 import logging
 import sys
 from enum import StrEnum
-from io import BytesIO, StringIO
+from io import BytesIO, IOBase, StringIO
 from typing import (
     IO,
     Any,
@@ -103,7 +103,7 @@ class SmartHandler:
         try:
             if self.is_buffer:
                 return self.sys_io
-            elif isinstance(self.uri, (BytesIO, StringIO)):
+            elif isinstance(self.uri, (BytesIO, StringIO, IOBase)):
                 return self.uri
             else:
                 self.uri = ensure_uri(self.uri, http_unquote=False)
