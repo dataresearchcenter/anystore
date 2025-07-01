@@ -2,7 +2,7 @@ import random
 import threading
 import time
 from datetime import timedelta
-from typing import Any, Generator
+from typing import Any, Generator, overload
 
 from anystore.io import smart_read, smart_write
 from anystore.worker import Worker, WorkerRun
@@ -88,3 +88,12 @@ def test_worker_requeue_during_run():
     res = worker.run()
     assert res.done == 149
     assert res.pending == 0
+
+
+def test_worker_sync():
+    tasks = (i for i in range(5))
+    worker = Worker(tasks=tasks, handle=lambda x: print(x))
+    res = worker.run_sync()
+    assert res.took
+    assert res.done == 5
+    assert not res.pending

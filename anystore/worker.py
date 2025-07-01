@@ -6,7 +6,7 @@ from collections import Counter
 from datetime import datetime, timedelta
 from multiprocessing import cpu_count
 from queue import Queue
-from typing import Any, Callable, Generator, Self, Type
+from typing import Any, Callable, Generator, Self, Type, TypeVar
 
 from pydantic import UUID4, BaseModel, field_validator
 
@@ -14,6 +14,8 @@ from anystore.logging import get_logger
 from anystore.settings import Settings
 
 settings = Settings()
+
+R = TypeVar("R", bound="WorkerRun")
 
 
 class RaisingThread(threading.Thread):
@@ -80,7 +82,7 @@ class Worker:
         handle_error: Callable | None = None,
         run_id: str | None = None,
         heartbeat: int | None = settings.worker_heartbeat,
-        status_model: Type[WorkerRun] | None = WorkerRun,
+        status_model: Type[R] | None = WorkerRun,
     ) -> None:
         self.consumer_threads = max(2, threads or cpu_count()) - 1
         self.queue = Queue()
@@ -91,7 +93,7 @@ class Worker:
         self.lock = threading.Lock()
         self.counter = Counter()
         self.status_model = status_model or WorkerRun
-        self.status: WorkerRun
+        self.status: R
         self.run_id = run_id
         self.heartbeat = heartbeat or settings.worker_heartbeat
         self.log = get_logger(f"{__name__}.{self.__class__.__name__}", run_id=run_id)
@@ -156,7 +158,7 @@ class Worker:
         status = self.get_status()
         self.log.info(f"[{self.status.run_id}] 💚 ", **status.model_dump(mode="json"))
 
-    def get_status(self) -> WorkerRun:
+    def get_status(self) -> R:
         return self.status_model(**{**self.status.model_dump(), **self.counter})
 
     def exit(self, exc: Exception | None = None, status: int | None = 0):
@@ -166,13 +168,22 @@ class Worker:
                 raise exc
         sys.exit(status)
 
+    def start(self) -> None:
+        self.status = self.status_model.start(run_id=self.run_id)
+
+    def stop(self, exc: Exception | None = None, done: bool = True) -> None:
+        self.status.stop(exc)
+        self.log_status()
+        if not exc and done:
+            self.done()
+
     def done(self) -> None:
         pass
 
-    def run(self) -> WorkerRun:
+    def run(self) -> R:
         try:
             self.log.info(f"Using `{self.consumer_threads}` consumer threads.")
-            self.status = self.status_model.start(run_id=self.run_id)
+            self.start()
             if self.heartbeat > 0:
                 heartbeat = RaisingThread(target=self.beat)
                 heartbeat.start()
@@ -189,15 +200,37 @@ class Worker:
                     self.exception(None, e)
             producer.join()
         except KeyboardInterrupt:
-            self.status.stop()
-            self.log_status()
+            self.stop(done=False)
             self.exit()
         except Exception as e:
-            self.status.stop(exc=e)
+            self.stop(exc=e)
             self.log_status()
             raise e
         finally:
-            self.status.stop()
-            self.log_status()
-            self.done()
+            self.stop()
+        return self.get_status()
+
+    def run_sync(self) -> R:
+        """
+        Sync run without threads
+
+        Example:
+            ```python
+            res = worker.run_sync()
+            ```
+        """
+        self.start()
+        for ix, task in enumerate(self.get_tasks(), 1):
+            if ix % 1000 == 0:
+                self.log_status()
+            self.count(pending=1)
+            try:
+                self.handle_task(task)
+                self.count(pending=-1)
+                self.count(done=1)
+            except Exception as e:
+                self.count(pending=-1)
+                self.count(errors=1)
+                self.exception(task, e)
+        self.stop(done=True)
         return self.get_status()

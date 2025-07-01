@@ -75,6 +75,7 @@ def mirror(
     prefix: str | None = None,
     exclude_prefix: str | None = None,
     overwrite: bool = False,
+    use_worker: bool = True,
     **kwargs,
 ) -> MirrorStatus:
     worker = MirrorWorker(
@@ -86,4 +87,6 @@ def mirror(
         overwrite=overwrite,
         **kwargs,
     )
-    return worker.run()
+    if use_worker:
+        return worker.run()
+    return worker.run_sync()
