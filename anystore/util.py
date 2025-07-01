@@ -13,6 +13,7 @@ from banal import clean_dict as _clean_dict
 from banal import ensure_dict, ensure_list, is_listish, is_mapping
 from pydantic import BaseModel
 from rigour.mime import normalize_mimetype
+from uuid_extensions import uuid7
 
 from anystore.types import SDict, Uri
 
@@ -449,3 +450,10 @@ def dump_yaml_model(
     """
     data = model_dump(obj, clean)
     return dump_yaml(data, newline=newline)
+
+
+def ensure_uuid(uuid: str | None = None) -> str:
+    """Ensure uuid or create one"""
+    if uuid:
+        return str(uuid)
+    return str(uuid7())

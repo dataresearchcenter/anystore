@@ -1,5 +1,6 @@
 import os
 from pathlib import Path, PosixPath
+from uuid import uuid4
 
 import pytest
 from pydantic import BaseModel
@@ -133,3 +134,9 @@ def test_util_make_uri_key():
         util.make_uri_key("https://example.org/foo/bar#fragment?a=b&c")
         == "example.org/foo/bar/ecdb319854a7b223d72e819949ed37328fe034a0"
     )
+
+
+def test_util_uuid():
+    assert isinstance(util.ensure_uuid(), str)
+    uid = str(uuid4())
+    assert util.ensure_uuid(uid) == uid
