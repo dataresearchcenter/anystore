@@ -22,6 +22,8 @@ class Tags:
         self.store = store
         self.get = store.get
         self.put = store.put
+        self.pop = store.pop
+        self.exists = store.exists
         self.iterate_keys = store.iterate_keys
         self.iterate_values = store.iterate_values
 
