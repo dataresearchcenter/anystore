@@ -63,14 +63,15 @@ def open_virtual(
     tmp_prefix: str | None = None,
     keep: bool | None = False,
     checksum: str | None = DEFAULT_HASH_ALGORITHM,
+    enforce_local_tmp: bool | None = False,
     **kwargs: Any,
 ) -> Generator[VirtualIO, None, None]:
     """
     Download a file for temporary local processing and get its checksum and an
     open handler. If the file itself is already on the local filesystem, the
-    actual file will be used. The file is cleaned up when leaving the context,
-    unless `keep=True` is given (except if it was a local file, it won't be
-    deleted in any case)
+    actual file will be used, except given `enforce_local_tmp=True`. The file is
+    cleaned up when leaving the context, unless `keep=True` is given (except if
+    it was a local file, it won't be deleted in any case)
 
     Example:
         ```python
@@ -92,6 +93,7 @@ def open_virtual(
         keep: Don't delete the file after leaving context, default `False`
         checksum: Algorithm from `hashlib` to use, default: sha1. Explicitly set
             to `None` to not compute a checksum at all.
+        enforce_local_tmp: Copy over local files to a temporary location, too
         **kwargs: pass through storage-specific options
 
     Yields:
@@ -105,7 +107,7 @@ def open_virtual(
     if store is None:
         store, uri = get_store_for_uri(uri)
     info = store.info(uri)
-    if store.is_local:
+    if store.is_local and not enforce_local_tmp:
         tmp = None
         open = store.open
         path = uri_to_path(store.get_key(uri))
@@ -118,9 +120,9 @@ def open_virtual(
         with open(uri, mode=mode) as handler:
             if checksum:
                 checksum = make_checksum(handler, checksum)
+                handler.seek(0)
             else:
                 checksum = None
-            handler.seek(0)
             handler.checksum = checksum
             handler.path = path
             handler.info = info
