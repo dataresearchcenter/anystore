@@ -172,9 +172,10 @@ def async_anycache(func=None, **kwargs):
 def _error_handler(
     func: Callable[..., Any],
     logger: BoundLogger | None = None,
-    max_retries: int | None = 1,
+    max_retries: float | None = 1,
     backoff_factor: int | None = 2,
     backoff_random: bool | None = True,
+    do_raise: bool | None = settings.debug,
     *args,
     **kwargs,
 ) -> Any:
@@ -210,16 +211,17 @@ def _error_handler(
             retry=retry,
             **kwargs,
         )
-        if settings.debug:
+        if do_raise:
             raise exc
 
 
 def error_handler(
     func: Callable[..., Any] | None = None,
     logger: BoundLogger | None = None,
-    max_retries: int | None = 1,
+    max_retries: float | None = 1,
     backoff_factor: int | None = 2,
     backoff_random: bool | None = True,
+    do_raise: bool | None = settings.debug,
 ) -> Callable[..., Any]:
     """
     Wrap any execution into an error handler that catches Exceptions and
@@ -253,6 +255,7 @@ def error_handler(
                 max_retries,
                 backoff_factor,
                 backoff_random,
+                do_raise,
                 *args,
                 **kwargs,
             )
@@ -270,6 +273,7 @@ def async_error_handler(
     max_retries: int | None = 1,
     backoff_factor: int | None = 2,
     backoff_random: bool | None = True,
+    do_raise: bool | None = settings.debug,
 ) -> Callable[..., Any]:
     """
     Async implementation of the
@@ -285,6 +289,7 @@ def async_error_handler(
                 max_retries,
                 backoff_factor,
                 backoff_random,
+                do_raise,
                 *args,
                 **kwargs,
             )
