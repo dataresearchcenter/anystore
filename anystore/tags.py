@@ -73,7 +73,9 @@ class Tags:
         now = datetime.now()
         try:
             yield now
-        finally:
+        except Exception as e:
+            raise e
+        else:
             self.store.put(key, now)
 
 
