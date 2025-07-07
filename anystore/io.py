@@ -50,6 +50,7 @@ from fsspec import open
 from fsspec.core import OpenFile
 from pydantic import BaseModel
 from structlog.stdlib import BoundLogger
+from tqdm import tqdm
 
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
@@ -511,6 +512,7 @@ def logged_items(
     chunk_size: int | None = 10_000,
     item_name: str | None = None,
     logger: logging.Logger | BoundLogger | None = None,
+    total: int | None = None,
     **log_kwargs,
 ) -> Generator[T, None, None]:
     """
@@ -539,12 +541,17 @@ def logged_items(
     chunk_size = chunk_size or 10_000
     ix = 0
     item_name = item_name or "Item"
-    for ix, item in enumerate(items, 1):
-        if ix == 1:
-            item_name = item_name or item.__class__.__name__.title()
-        if ix % chunk_size == 0:
-            item_name = item_name or item.__class__.__name__.title()
-            log_.info(f"{action} `{item_name}` {ix} ...", **log_kwargs)
-        yield item
+    if total:
+        log_.info(f"{action} {total} `{item_name}s` ...", **log_kwargs)
+        yield from tqdm(items, total=total, unit=item_name)
+        ix = total
+    else:
+        for ix, item in enumerate(items, 1):
+            if ix == 1:
+                item_name = item_name or item.__class__.__name__.title()
+            if ix % chunk_size == 0:
+                item_name = item_name or item.__class__.__name__.title()
+                log_.info(f"{action} `{item_name}` {ix} ...", **log_kwargs)
+            yield item
     if ix:
         log_.info(f"{action} {ix} `{item_name}s`: Done.", **log_kwargs)
