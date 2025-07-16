@@ -188,7 +188,7 @@ def smart_stream(
     if str(uri).startswith("http"):
         with httpx.stream("GET", str(uri)) as fh:
             for line in fh.iter_lines():
-                if "b" not in (mode or DEFAULT_MODE):
+                if "b" in (mode or DEFAULT_MODE):
                     line = line.encode()
                 yield line.strip()
     else:
