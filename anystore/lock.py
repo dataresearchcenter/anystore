@@ -4,7 +4,8 @@ from anystore.store.base import BaseStore
 
 class Lock:
     """
-    A global shared locking mechanism based on a store (e.g. redis)
+    A global shared locking mechanism based on a store (e.g. redis, or file-like
+    s3)
 
     Example:
         ```python

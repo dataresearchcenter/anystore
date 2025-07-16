@@ -21,6 +21,7 @@ nav:
       - anystore.serialize: reference/serialize.md
       - anystore.decorators: reference/decorators.md
       - anystore.settings: reference/settings.md
+      - anystore.lock: reference/lock.md
       - anystore.util: reference/util.md
 theme:
   name: material
