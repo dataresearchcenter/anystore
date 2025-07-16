@@ -45,6 +45,7 @@ from typing import (
     TypeVar,
 )
 
+import httpx
 import orjson
 from fsspec import open
 from fsspec.core import OpenFile
@@ -184,9 +185,16 @@ def smart_stream(
     Yields:
         A generator of `str` or `byte` content, depending on `mode`
     """
-    with smart_open(uri, mode, **kwargs) as fh:
-        while line := fh.readline():
-            yield line.strip()
+    if str(uri).startswith("http"):
+        with httpx.stream("GET", str(uri)) as fh:
+            for line in fh.iter_lines():
+                if "b" not in (mode or DEFAULT_MODE):
+                    line = line.encode()
+                yield line.strip()
+    else:
+        with smart_open(uri, mode, **kwargs) as fh:
+            while line := fh.readline():
+                yield line.strip()
 
 
 def smart_stream_csv(uri: Uri, **kwargs: Any) -> SDictGenerator:
