@@ -1429,14 +1429,14 @@ colorama = ">=0.4"
 
 [[package]]
 name = "griffe-pydantic"
-version = "1.1.4"
+version = "1.1.6"
 description = "Griffe extension for Pydantic."
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "griffe_pydantic-1.1.4-py3-none-any.whl", hash = "sha256:a4b9933579e14a8296cae90e71dace2742d91cb6792e5cd583047a6079f94e78"},
-    {file = "griffe_pydantic-1.1.4.tar.gz", hash = "sha256:3ce97cedb2c15b696e0c1c4bb901411f5b83b8e4d57b1fc0f2becde678ab4870"},
+    {file = "griffe_pydantic-1.1.6-py3-none-any.whl", hash = "sha256:57a838dd1c3b5842a7ebada8fd80f2585a25b69c37f73ede19ca20fa9af055e6"},
+    {file = "griffe_pydantic-1.1.6.tar.gz", hash = "sha256:d33413bf44b01b2f9348ea3328fdfe34ad7b2aabb4005a18d36cc0ca0ade908e"},
 ]
 
 [package.dependencies]
@@ -4751,4 +4751,4 @@ sql = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "94930c92844502933e486e0fbec91f0459fff242f50efb3ecfe2e1cbecbac95e"
+content-hash = "91cb39e3ea8a236fdea89dad33123eeb48701ab6ff5d9c5d69619c8a90e453ff"
