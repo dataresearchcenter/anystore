@@ -4,9 +4,6 @@ import sys
 from logging import Filter, LogRecord
 from typing import TYPE_CHECKING, Any, Dict, List
 
-if TYPE_CHECKING:
-    from logging import _Level
-
 import structlog
 from structlog.contextvars import merge_contextvars
 from structlog.dev import ConsoleRenderer, set_exc_info
@@ -25,7 +22,12 @@ from structlog.stdlib import (
 )
 from structlog.stdlib import get_logger as get_raw_logger
 
+from anystore.functools import weakref_cache as cache
 from anystore.settings import Settings
+
+if TYPE_CHECKING:
+    from logging import _Level
+
 
 settings = Settings()
 
@@ -49,7 +51,7 @@ def get_logger(name: str, **ctx) -> BoundLogger:
     return logger
 
 
-@functools.cache
+@cache
 def configure_logging(level: int | str | None = None) -> None:
     """Configure log levels and structured logging"""
     log_level = get_log_level(level)

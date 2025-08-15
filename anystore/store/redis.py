@@ -2,12 +2,12 @@
 Store backend using redis-like stores such as Redis, Fakeredis or Apache Kvrocks
 """
 
-from functools import cache
 from typing import TYPE_CHECKING, Any, Generator
 
 import redis
 
 from anystore.exceptions import DoesNotExist
+from anystore.functools import weakref_cache as cache
 from anystore.logging import get_logger
 from anystore.model import BaseStats
 from anystore.settings import Settings

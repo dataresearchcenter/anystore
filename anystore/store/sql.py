@@ -1,6 +1,5 @@
 import threading
 from datetime import datetime, timedelta
-from functools import cache
 from operator import and_
 from typing import Generator, Optional, Union
 
@@ -26,6 +25,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Connection, Engine
 
 from anystore.exceptions import DoesNotExist
+from anystore.functools import weakref_cache as cache
 from anystore.model import BaseStats
 from anystore.settings import Settings
 from anystore.store.base import BaseStore, VirtualIOMixin
