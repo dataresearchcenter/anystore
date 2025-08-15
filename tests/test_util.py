@@ -1,4 +1,6 @@
 import os
+import time
+from datetime import timedelta
 from pathlib import Path, PosixPath
 from uuid import uuid4
 
@@ -145,3 +147,9 @@ def test_util_uuid():
 def test_util_mask_uri():
     assert util.mask_uri("https://example.org") == "https://example.org"
     assert util.mask_uri("sql://user:password@host:123") == "sql://***:***@host:123"
+
+
+def test_util_took():
+    with util.Took() as t:
+        time.sleep(1)
+        assert t.took > timedelta(seconds=1)

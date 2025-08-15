@@ -2,10 +2,11 @@ import hashlib
 import mimetypes
 import re
 import shutil
+from datetime import datetime, timedelta
 from io import BytesIO, StringIO
 from os.path import splitext
 from pathlib import Path
-from typing import Any, BinaryIO, TypeVar
+from typing import Any, BinaryIO, Self, TypeVar
 from urllib.parse import unquote, urljoin, urlparse, urlsplit, urlunsplit
 
 import orjson
@@ -466,3 +467,31 @@ def mask_uri(uri: str) -> str:
     """
     pattern = r"([a-zA-Z][a-zA-Z0-9+.-]*)://([^:]+):([^@]+)@"
     return re.sub(pattern, r"\1://***:***@", uri)
+
+
+class Took:
+    """
+    Shorthand to measure time of a code block
+
+    Examples:
+        ```python
+        from anystore.util import Took
+
+        with Took() as t:
+            # do something
+            log.info(f"Job took:", t.took)
+        ```
+    """
+
+    def __init__(self) -> None:
+        self.start = datetime.now()
+
+    @property
+    def took(self) -> timedelta:
+        return datetime.now() - self.start
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        pass
