@@ -140,3 +140,8 @@ def test_util_uuid():
     assert isinstance(util.ensure_uuid(), str)
     uid = str(uuid4())
     assert util.ensure_uuid(uid) == uid
+
+
+def test_util_mask_uri():
+    assert util.mask_uri("https://example.org") == "https://example.org"
+    assert util.mask_uri("sql://user:password@host:123") == "sql://***:***@host:123"

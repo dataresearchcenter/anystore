@@ -1,5 +1,6 @@
 import hashlib
 import mimetypes
+import re
 import shutil
 from io import BytesIO, StringIO
 from os.path import splitext
@@ -457,3 +458,11 @@ def ensure_uuid(uuid: str | None = None) -> str:
     if uuid:
         return str(uuid)
     return str(uuid7())
+
+
+def mask_uri(uri: str) -> str:
+    """
+    Replace username and password in a URI with asterisks
+    """
+    pattern = r"([a-zA-Z][a-zA-Z0-9+.-]*)://([^:]+):([^@]+)@"
+    return re.sub(pattern, r"\1://***:***@", uri)
