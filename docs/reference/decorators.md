@@ -1,1 +1,3 @@
 ::: anystore.decorators
+
+::: anystore.functools
