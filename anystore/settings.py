@@ -17,6 +17,9 @@ class BaseSettings(_BaseSettings):
     debug: bool = Field(alias="debug", default=False)
     """Enable debug mode"""
 
+    testing: bool = Field(default=False, alias="testing")
+    """Enable testing mode"""
+
     redis_debug: bool = Field(alias="redis_debug", default=False)
     """Use fakeredis when using redis backend"""
 
