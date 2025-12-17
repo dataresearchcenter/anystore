@@ -1,6 +1,6 @@
 [project]
 name = "anystore"
-version = "0.4.0"
+version = "0.4.1"
 description = "Store and cache things anywhere"
 authors = [{ name = "Simon Wörpel", email = "simon.woerpel@pm.me" }]
 license = "AGPLv3+"
