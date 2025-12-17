@@ -71,6 +71,13 @@ FORMAT_CSV = "csv"
 FORMAT_JSON = "json"
 
 
+def _default_serializer(obj: Any) -> str:
+    """Custom serializer for orjson to handle types like pd.Timestamp / datetime"""
+    if hasattr(obj, "isoformat"):
+        return obj.isoformat()
+    return str(obj)
+
+
 class IOFormat(StrEnum):
     """For use in typer cli"""
 
@@ -496,7 +503,11 @@ class Writer:
         if self.output_format == "json":
             if self.clean:
                 row = clean_dict(row)
-            line = orjson.dumps(row, option=orjson.OPT_APPEND_NEWLINE)
+            line = orjson.dumps(
+                row,
+                default=_default_serializer,
+                option=orjson.OPT_APPEND_NEWLINE | orjson.OPT_NAIVE_UTC,
+            )
             if "b" not in self.mode:
                 line = line.decode()
             self.io.write(line)
