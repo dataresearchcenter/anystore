@@ -94,7 +94,7 @@ def to_store(
 
 
 def from_store(
-    value: bytes,
+    value: bytes | None,
     serialization_mode: Mode | None = "auto",
     deserialization_func: Callable | None = None,
     model: Model | None = None,
@@ -117,6 +117,8 @@ def from_store(
     Returns:
         The deserialized object
     """
+    if value is None:
+        return None
     if model is not None:
         data = orjson.loads(value)
         if data:
