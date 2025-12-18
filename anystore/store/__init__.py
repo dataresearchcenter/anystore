@@ -81,11 +81,12 @@ def get_store(
 
 
 def get_store_for_uri(uri: Uri, **kwargs) -> tuple[BaseStore, str]:
-    parsed = urlparse(ensure_uri(uri))
+    uri = ensure_uri(uri)
+    parsed = urlparse(uri)
     if parsed.scheme in ("redis", "memory") or "sql" in parsed.scheme:
         raise NotImplementedError(f"Cannot parse `{uri}` with scheme `{parsed.scheme}`")
-    base_uri, path = str(uri).rsplit("/", 1)
+    base_uri, path = uri.rsplit("/", 1)
     return get_store(base_uri, **kwargs), path
 
 
-__all__ = ["get_store", "Store", "MemoryStore"]
+__all__ = ["get_store", "get_store_for_uri", "Store", "MemoryStore"]
