@@ -13,6 +13,7 @@ import orjson
 import yaml
 from banal import clean_dict as _clean_dict
 from banal import ensure_dict, ensure_list, is_listish, is_mapping
+from banal.cache import bytes_iter
 from pydantic import BaseModel
 from rigour.mime import normalize_mimetype
 from uuid_extensions import uuid7
@@ -253,7 +254,7 @@ def make_data_checksum(data: Any, algorithm: str = DEFAULT_HASH_ALGORITHM) -> st
         return make_checksum(BytesIO(data), algorithm)
     if isinstance(data, str):
         return make_checksum(BytesIO(data.encode()), algorithm)
-    data = repr(data).encode()
+    data = b"".join(bytes_iter(data))
     return make_checksum(BytesIO(data), algorithm)
 
 
