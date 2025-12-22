@@ -5,7 +5,7 @@ from anystore.tags import get_tags
 
 
 def test_tags(tmp_path):
-    tags = get_tags(tmp_path)
+    tags = get_tags(tmp_path, raise_on_nonexist=False)
 
     tags.put("foo", "bar")
     assert tags.get("foo") == "bar"

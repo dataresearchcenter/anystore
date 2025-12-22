@@ -3,14 +3,9 @@ import time
 from datetime import datetime
 
 import pytest
-from pydantic import BaseModel
 
-from anystore.decorators import (
-    anycache,
-    async_anycache,
-    async_error_handler,
-    error_handler,
-)
+from anystore.decorators import anycache, async_anycache, error_handler
+from anystore.model import BaseModel
 from anystore.store import get_store
 from anystore.util import make_signature_key
 
