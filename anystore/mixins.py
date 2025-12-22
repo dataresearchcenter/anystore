@@ -2,14 +2,14 @@ from functools import lru_cache
 from typing import Self
 
 import orjson
+import yaml
 from pydantic import BaseModel as _BaseModel
 from pydantic import field_validator
-import yaml
 
 from anystore.io import smart_read
 from anystore.logging import get_logger
-from anystore.types import Uri
-from anystore.util import clean_dict
+from anystore.types import SDict, Uri
+from anystore.util import clean_dict, model_dump
 
 log = get_logger(__name__)
 
@@ -74,3 +74,6 @@ class BaseModel(_BaseModel, RemoteMixin):
         if v == "":
             return None
         return v
+
+    def to_dict(self) -> SDict:
+        return model_dump(self, clean=True)
