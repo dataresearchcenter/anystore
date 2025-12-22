@@ -1,12 +1,21 @@
 import contextlib
-from typing import IO, Any, Generator
+from io import BytesIO, StringIO
+from typing import IO, Any, AnyStr, Generator
 
+from anystore.io import DEFAULT_MODE
 from anystore.model import BaseStats
-from anystore.types import AnyStrGenerator, Value
+from anystore.types import AnyStrGenerator, Uri, Value
 
 
 class AbstractBackend:
     """Base backend class with methods that all backends need to implement"""
+
+    uri: Uri
+    key_prefix: str | None
+
+    def get_key(self, key: str) -> str:
+        """Get the full key path."""
+        raise NotImplementedError
 
     def _write(self, key: str, value: Value, **kwargs) -> None:
         """
@@ -69,11 +78,51 @@ class AbstractBackend:
         """
         Get relative path to the given key (backend specific)
         """
-        return self.get_key(key).replace(self.uri, "").strip("/")
+        return self.get_key(key).replace(str(self.uri), "").strip("/")
 
     @contextlib.contextmanager
-    def _open(self, key: str, **kwargs) -> Generator[IO, None, None]:
+    def _open(self, key: str, **kwargs) -> Generator[IO[AnyStr], None, None]:
         """
         Get a io handler
         """
         raise NotImplementedError
+
+
+class VirtualIOMixin:
+    """
+    Fake `open()` method for non file-like backends
+    """
+
+    def _write(self, key: str, value: Value, **kwargs) -> None:
+        """
+        Write value with key to actual backend
+        """
+        raise NotImplementedError
+
+    def _read(self, key: str, raise_on_nonexist: bool | None = True, **kwargs) -> Any:
+        """
+        Read key from actual backend
+        """
+        raise NotImplementedError
+
+    @contextlib.contextmanager
+    def _open(self, key: str, **kwargs) -> Generator[BytesIO | StringIO, None, None]:
+        mode = kwargs.get("mode", DEFAULT_MODE)
+        writer = "w" in mode
+        if not writer:
+            content = self._read(key, **kwargs)
+            if "b" in mode:
+                handler = BytesIO(content)
+            else:
+                handler = StringIO(content)
+        else:
+            if "b" in mode:
+                handler = BytesIO()
+            else:
+                handler = StringIO()
+        try:
+            yield handler
+        finally:
+            if writer:
+                self._write(key, handler.getvalue(), **kwargs)
+            handler.close()

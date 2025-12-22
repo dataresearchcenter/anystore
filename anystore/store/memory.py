@@ -9,7 +9,8 @@ from typing import Any, Generator
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
 from anystore.model import BaseStats
-from anystore.store.base import BaseStore, VirtualIOMixin
+from anystore.store.abstract import VirtualIOMixin
+from anystore.store.base import BaseStore
 from anystore.types import Value
 
 log = get_logger(__name__)

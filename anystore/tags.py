@@ -52,7 +52,7 @@ class Tags:
         for key in self.store.iterate_keys(
             prefix=prefix, exclude_prefix=exclude_prefix, glob=glob
         ):
-            self.store.delete(key, ignore_errors)
+            self.store.delete(key, ignore_errors=bool(ignore_errors))
 
     @contextlib.contextmanager
     def touch(self, key: Uri) -> Generator[datetime, None, None]:

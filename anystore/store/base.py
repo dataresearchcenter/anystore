@@ -5,11 +5,22 @@ The store class provides the top-level interface regardless for the storage
 backend.
 """
 
-import contextlib
 from datetime import datetime
-from io import BytesIO, StringIO
+from functools import wraps
 from pathlib import Path
-from typing import IO, Any, Callable, ContextManager, Generator
+from typing import (
+    IO,
+    Any,
+    Callable,
+    Concatenate,
+    ContextManager,
+    Generator,
+    Generic,
+    Literal,
+    ParamSpec,
+    TypeVar,
+    overload,
+)
 from urllib.parse import unquote
 
 from anystore.exceptions import DoesNotExist, ReadOnlyError
@@ -19,7 +30,7 @@ from anystore.model import Stats, StoreModel
 from anystore.serialize import Mode, from_store, to_store
 from anystore.settings import Settings
 from anystore.store.abstract import AbstractBackend
-from anystore.types import Model, Uri
+from anystore.types import Model, Raise, Uri, V
 from anystore.util import (
     DEFAULT_HASH_ALGORITHM,
     clean_dict,
@@ -27,23 +38,82 @@ from anystore.util import (
     path_from_uri,
 )
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
 settings = Settings()
 
 log = get_logger(__name__)
 
 
-def check_readonly(func: Callable):
+def check_readonly(
+    func: Callable[Concatenate["BaseStore", P], R],
+) -> Callable[Concatenate["BaseStore", P], R]:
     """Guard for read-only store. Write functions should be decorated with it"""
 
-    def _check(store: "BaseStore", *args, **kwargs):
-        if store.readonly:
-            raise ReadOnlyError(f"Store `{store.uri}` is configured readonly!")
-        return func(store, *args, **kwargs)
+    @wraps(func)
+    def _check(self: "BaseStore", *args: P.args, **kwargs: P.kwargs) -> R:
+        if self.readonly:
+            raise ReadOnlyError(f"Store `{self.uri}` is configured readonly!")
+        return func(self, *args, **kwargs)
 
     return _check
 
 
-class BaseStore(StoreModel, AbstractBackend):
+class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
+    # Explicit raise_on_nonexist=True always returns V
+    @overload
+    def get(
+        self,
+        key: Uri,
+        raise_on_nonexist: Literal[True],
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> V:
+        pass
+
+    # Explicit raise_on_nonexist=False always returns V | None
+    @overload
+    def get(
+        self,
+        key: Uri,
+        raise_on_nonexist: Literal[False],
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> V | None:
+        pass
+
+    # Store configured with raise_on_nonexist=True, param is None -> returns V
+    @overload
+    def get(
+        self: "BaseStore[V, Literal[True]]",
+        key: Uri,
+        raise_on_nonexist: None = None,
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> V:
+        pass
+
+    # Default case (store configured with False or unknown) -> returns V | None
+    @overload
+    def get(
+        self,
+        key: Uri,
+        raise_on_nonexist: None = None,
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> V | None:
+        pass
+
     def get(
         self,
         key: Uri,
@@ -52,7 +122,7 @@ class BaseStore(StoreModel, AbstractBackend):
         deserialization_func: Callable | None = None,
         model: Model | None = None,
         **kwargs,
-    ) -> Any:
+    ) -> V | None:
         """
         Get a value from the store for the given key
 
@@ -89,20 +159,94 @@ class BaseStore(StoreModel, AbstractBackend):
                 raise DoesNotExist(f"Key does not exist: `{key}`")
             return None
 
+    # Explicit raise_on_nonexist=True always returns V
+    @overload
+    def pop(
+        self,
+        key: Uri,
+        raise_on_nonexist: Literal[True],
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> V:
+        pass
+
+    # Explicit raise_on_nonexist=False always returns V | None
+    @overload
+    def pop(
+        self,
+        key: Uri,
+        raise_on_nonexist: Literal[False],
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> V | None:
+        pass
+
+    # Store configured with raise_on_nonexist=True, param is None -> returns V
+    @overload
+    def pop(
+        self: "BaseStore[V, Literal[True]]",
+        key: Uri,
+        raise_on_nonexist: None = None,
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> V:
+        pass
+
+    # Default case (store configured with False or unknown) -> returns V | None
+    @overload
+    def pop(
+        self,
+        key: Uri,
+        raise_on_nonexist: None = None,
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> V | None:
+        pass
+
     @check_readonly
-    def pop(self, key: Uri, *args: Any, **kwargs: Any) -> Any:
+    def pop(
+        self,
+        key: Uri,
+        raise_on_nonexist: bool | None = None,
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> V | None:
         """
         Retrieve the value for the given key and remove it from the store.
 
         Args:
             key: Key relative to store base uri
-            *args: Any valid arguments for the stores `get` function
+            raise_on_nonexist: Raise `DoesNotExist` if key doesn't exist or stay
+                silent, overrides store settings
+            serialization_mode: Serialize result ("auto", "raw", "pickle",
+                "json"), overrides store settings
+            deserialization_func: Specific function to use (ignores
+                `serialization_mode`), overrides store settings
+            model: Pydantic serialization model (ignores `serialization_mode`
+                and `deserialization_func`), overrides store settings
             **kwargs: Any valid arguments for the stores `get` function
 
         Returns:
             The (optionally serialized) value for the key
         """
-        value = self.get(key, *args, **kwargs)
+        value = self.get(
+            key,
+            raise_on_nonexist=raise_on_nonexist,
+            serialization_mode=serialization_mode,
+            deserialization_func=deserialization_func,
+            model=model,
+            **kwargs,
+        )
         self._delete(self.get_key(key))
         return value
 
@@ -121,6 +265,58 @@ class BaseStore(StoreModel, AbstractBackend):
             if not ignore_errors:
                 raise e
 
+    # Explicit raise_on_nonexist=True always returns Generator
+    @overload
+    def stream(
+        self,
+        key: Uri,
+        raise_on_nonexist: Literal[True],
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> Generator[V, None, None]:
+        pass
+
+    # Explicit raise_on_nonexist=False always returns Generator | None
+    @overload
+    def stream(
+        self,
+        key: Uri,
+        raise_on_nonexist: Literal[False],
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> Generator[V, None, None] | None:
+        pass
+
+    # Store configured with raise_on_nonexist=True, param is None -> returns Generator
+    @overload
+    def stream(
+        self: "BaseStore[V, Literal[True]]",
+        key: Uri,
+        raise_on_nonexist: None = None,
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> Generator[V, None, None]:
+        pass
+
+    # Default case (store configured with False or unknown) -> returns Generator | None
+    @overload
+    def stream(
+        self,
+        key: Uri,
+        raise_on_nonexist: None = None,
+        serialization_mode: Mode | None = None,
+        deserialization_func: Callable | None = None,
+        model: Model | None = None,
+        **kwargs,
+    ) -> Generator[V, None, None] | None:
+        pass
+
     def stream(
         self,
         key: Uri,
@@ -129,7 +325,7 @@ class BaseStore(StoreModel, AbstractBackend):
         deserialization_func: Callable | None = None,
         model: Model | None = None,
         **kwargs,
-    ) -> Generator[Any, None, None]:
+    ) -> Generator[V, None, None] | None:
         """
         Stream a value line by line from the store for the given key
 
@@ -170,7 +366,7 @@ class BaseStore(StoreModel, AbstractBackend):
     def put(
         self,
         key: Uri,
-        value: Any,
+        value: V,
         serialization_mode: Mode | None = None,
         serialization_func: Callable | None = None,
         model: Model | None = None,
@@ -285,8 +481,7 @@ class BaseStore(StoreModel, AbstractBackend):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
-        **kwargs,
-    ) -> Generator[Any, None, None]:
+    ) -> Generator[V, None, None]:
         """
         Iterate through all the values in the store based on given criteria.
         Criteria can be combined (e.g. include but exclude a subset).
@@ -311,12 +506,14 @@ class BaseStore(StoreModel, AbstractBackend):
             The matching values as a generator of any (serialized) type
         """
         for key in self._iterate_keys(prefix, exclude_prefix, glob):
-            yield self.get(
+            value = self.get(
                 key,
                 serialization_mode=serialization_mode,
                 deserialization_func=deserialization_func,
                 model=model,
             )
+            if value is not None:
+                yield value
 
     def checksum(
         self, key: Uri, algorithm: str | None = DEFAULT_HASH_ALGORITHM, **kwargs: Any
@@ -390,31 +587,3 @@ class BaseStore(StoreModel, AbstractBackend):
         if self.is_local:
             parent = path_from_uri(self.get_key(key)).parent
             parent.mkdir(exist_ok=True, parents=True)
-
-
-class VirtualIOMixin:
-    """
-    Fake `open()` method for non file-like backends
-    """
-
-    @contextlib.contextmanager
-    def _open(self, key: str, **kwargs) -> Generator[BytesIO | StringIO, None, None]:
-        mode = kwargs.get("mode", DEFAULT_MODE)
-        writer = "w" in mode
-        if not writer:
-            content = self._read(key, **kwargs)
-            if "b" in mode:
-                handler = BytesIO(content)
-            else:
-                handler = StringIO(content)
-        else:
-            if "b" in mode:
-                handler = BytesIO()
-            else:
-                handler = StringIO()
-        try:
-            yield handler
-        finally:
-            if writer:
-                self._write(key, handler.getvalue(), **kwargs)
-            handler.close()

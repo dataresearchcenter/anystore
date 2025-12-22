@@ -11,7 +11,8 @@ from anystore.functools import weakref_cache as cache
 from anystore.logging import get_logger
 from anystore.model import BaseStats
 from anystore.settings import Settings
-from anystore.store.base import BaseStore, VirtualIOMixin
+from anystore.store.abstract import VirtualIOMixin
+from anystore.store.base import BaseStore
 from anystore.types import Value
 from anystore.util import join_relpaths
 

@@ -28,7 +28,8 @@ from anystore.exceptions import DoesNotExist
 from anystore.functools import weakref_cache as cache
 from anystore.model import BaseStats
 from anystore.settings import Settings
-from anystore.store.base import BaseStore, VirtualIOMixin
+from anystore.store.abstract import VirtualIOMixin
+from anystore.store.base import BaseStore
 from anystore.types import Value
 from anystore.util import clean_dict, join_relpaths
 
@@ -92,7 +93,7 @@ class SqlStore(VirtualIOMixin, BaseStore):
         super().__init__(**data)
         engine_kwargs = ensure_dict(sql_settings.get("engine_kwargs"))
         metadata = get_metadata()
-        engine = get_engine(self.uri, **engine_kwargs)
+        engine = get_engine(str(self.uri), **engine_kwargs)
         table = sql_settings.get("table") or TABLE_NAME
         table = make_table(table, metadata)
         metadata.create_all(engine, tables=[table], checkfirst=True)
