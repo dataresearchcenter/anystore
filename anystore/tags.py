@@ -81,6 +81,5 @@ class Tags:
 
 @cache
 def get_tags(*args, **kwargs) -> Tags:
-    kwargs["raise_on_nonexist"] = False
     store = get_store(*args, **kwargs)
     return Tags(store)
