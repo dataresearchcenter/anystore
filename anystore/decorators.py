@@ -58,11 +58,14 @@ def _setup_decorator(**kwargs) -> tuple[Callable, BaseStore]:
 
 
 def _handle_result(key: str, res: Any, store: BaseStore) -> Any:
+    value = res
     if store.serialization_func is not None:
-        res = store.serialization_func(res)
+        value = store.serialization_func(res)
     if key:
-        store.put(key, res, serialization_func=lambda x: x)  # already serialized
-    return res
+        store.put(key, value, serialization_func=lambda x: x)  # already serialized
+    if store.deserialization_func is not None:
+        return store.deserialization_func(value)
+    return value
 
 
 def anycache(

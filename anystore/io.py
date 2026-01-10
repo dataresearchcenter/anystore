@@ -55,6 +55,7 @@ from tqdm import tqdm
 
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
+from anystore.model import Stats
 from anystore.types import M, MGenerator, SDict, SDictGenerator
 from anystore.types import Uri as _Uri
 from anystore.util import clean_dict, ensure_uri
@@ -574,3 +575,17 @@ def logged_items(
             yield item
     if ix:
         log_.info(f"{action} {ix} `{item_name}s`: Done.", **log_kwargs)
+
+
+def get_info(key: _Uri) -> Stats:
+    from anystore.store import get_store_for_uri
+
+    store, key = get_store_for_uri(key)
+    return store.info(key)
+
+
+def get_checksum(key: _Uri) -> str:
+    from anystore.store import get_store_for_uri
+
+    store, key = get_store_for_uri(key)
+    return store.checksum(key)

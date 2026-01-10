@@ -6,7 +6,6 @@ import yaml
 from pydantic import BaseModel as _BaseModel
 from pydantic import field_validator
 
-from anystore.io import smart_read
 from anystore.logging import get_logger
 from anystore.types import SDict, Uri
 from anystore.util import clean_dict, model_dump
@@ -19,6 +18,8 @@ def cached_from_uri(uri: Uri) -> str:
     """
     Cache remote sources on runtime
     """
+    from anystore.io import smart_read
+
     log.info("Loading `%s` ..." % uri)
     return smart_read(uri)
 
