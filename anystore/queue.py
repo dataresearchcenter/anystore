@@ -1,7 +1,8 @@
 import contextlib
 from typing import Generator, Generic, TypeVar
 
-from anystore.model import BaseModel
+from pydantic import BaseModel
+
 from anystore.store import get_store
 from anystore.store.base import BaseStore
 from anystore.tags import Tags
