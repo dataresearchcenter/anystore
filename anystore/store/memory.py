@@ -59,13 +59,18 @@ class MemoryStore(VirtualIOMixin, BaseStore):
         exclude_prefix: str | None = None,
         glob: str | None = None,
     ) -> Generator[str, None, None]:
-        prefix = self.get_key(prefix or "")
+        key_prefix = self._get_key_prefix()
+        full_prefix = self.get_key(prefix or "")
         keys = list(self._store.keys())
         for key in keys:
-            if key.startswith(prefix):
+            if key.startswith(full_prefix):
                 if not exclude_prefix or not key.startswith(exclude_prefix):
                     if not glob or fnmatch(key, glob):
-                        yield key
+                        # Strip key_prefix to return relative keys
+                        if key_prefix and key.startswith(key_prefix + "/"):
+                            yield key[len(key_prefix) + 1 :]
+                        elif not key_prefix:
+                            yield key
 
     def _check_ttl(self, key: str) -> None:
         ttl = self._ttl.get(key)

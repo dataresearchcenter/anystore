@@ -183,13 +183,14 @@ class SqlStore(VirtualIOMixin, BaseStore):
         glob: str | None = None,
     ) -> Generator[str, None, None]:
         table = self._table
-        key_prefix = self.get_key(prefix or "")
-        key_prefix = join_relpaths(key_prefix, (glob or "*").replace("*", "%"))
-        stmt = select(table.c.key).where(table.c.key.like(key_prefix))
+        store_key_prefix = self._get_key_prefix()
+        full_prefix = self.get_key(prefix or "")
+        full_prefix = join_relpaths(full_prefix, (glob or "*").replace("*", "%"))
+        stmt = select(table.c.key).where(table.c.key.like(full_prefix))
         if exclude_prefix:
             stmt = select(table.c.key).where(
                 and_(
-                    table.c.key.like(key_prefix),
+                    table.c.key.like(full_prefix),
                     table.c.key.not_like(f"{self.get_key(exclude_prefix)}%"),
                 )
             )
@@ -198,5 +199,9 @@ class SqlStore(VirtualIOMixin, BaseStore):
             cursor = conn.execute(stmt)
             while rows := cursor.fetchmany(10_000):
                 for row in rows:
-                    key = row[0]
-                    yield key.strip("/")
+                    key = row[0].strip("/")
+                    # Strip key_prefix to return relative keys
+                    if store_key_prefix and key.startswith(store_key_prefix + "/"):
+                        yield key[len(store_key_prefix) + 1 :]
+                    elif not store_key_prefix:
+                        yield key

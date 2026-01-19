@@ -110,6 +110,17 @@ def _test_store(fixtures_path, uri: str, can_delete: bool | None = True) -> bool
             == "HELLO"
         )
 
+        # key_prefix: iterate_keys should return relative keys that work with delete
+        prefixed = get_store(uri, key_prefix="test_prefix")
+        prefixed.put("pkey1", "pval1")
+        prefixed.put("pkey2", "pval2")
+        pkeys = list(prefixed.iterate_keys())
+        assert len(pkeys) == 2
+        assert all(prefixed.get(k) is not None for k in pkeys)
+        for k in pkeys:
+            prefixed.delete(k)
+        assert len(list(prefixed.iterate_keys())) == 0
+
     # ttl
     if can_delete:
         store.default_ttl = 1
