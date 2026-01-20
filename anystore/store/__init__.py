@@ -2,7 +2,6 @@
 # Top-level store entrypoint
 """
 
-import os
 from typing import Any
 from urllib.parse import urlparse
 
@@ -11,7 +10,6 @@ from anystore.settings import Settings
 from anystore.store.base import BaseStore
 from anystore.store.fs import Store
 from anystore.store.memory import MemoryStore
-from anystore.store.zip import ZipStore
 from anystore.types import Uri
 from anystore.util import ensure_uri
 
@@ -75,8 +73,6 @@ def get_store(
         except ImportError as e:
             log.error("Install sql dependencies via `anystore[sql]`")
             raise ImportError(e)
-    if "zip" in os.path.splitext(uri)[1]:
-        return ZipStore(uri=uri, **kwargs)
     return Store(uri=uri, **kwargs)
 
 

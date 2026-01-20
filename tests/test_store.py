@@ -15,12 +15,11 @@ from anystore.store.memory import MemoryStore
 from anystore.store.redis import RedisStore
 from anystore.store.sql import SqlStore
 from anystore.store.virtual import get_virtual, open_virtual
-from anystore.store.zip import ZipStore
 from anystore.util import DEFAULT_HASH_ALGORITHM, ensure_uri, join_uri, uri_to_path
 from tests.conftest import setup_s3
 
 
-def _test_store(fixtures_path, uri: str, can_delete: bool | None = True) -> bool:
+def _test_store(fixtures_path, uri: str) -> bool:
     # generic store test
     store = get_store(uri=uri)
     assert isinstance(store, BaseStore)
@@ -33,9 +32,8 @@ def _test_store(fixtures_path, uri: str, can_delete: bool | None = True) -> bool
     assert store.get("seri") == "hello"
 
     # overwrite
-    if can_delete:
-        store.put(key, False)
-        assert store.get(key) is False
+    store.put(key, False)
+    assert store.get(key) is False
 
     store.put("other", None)
     assert store.get("other") is None
@@ -83,7 +81,7 @@ def _test_store(fixtures_path, uri: str, can_delete: bool | None = True) -> bool
     assert keys[0] == "foo/bar/baz"
 
     # glob for "child" stores (eg: s3://bucket/path)
-    if store.is_fslike and not isinstance(store, ZipStore):
+    if store.is_fslike:
         _store = get_store(join_uri(store.uri, "foo"))
         keys = [k for k in _store.iterate_keys()]
         assert len(keys) == 1
@@ -94,45 +92,42 @@ def _test_store(fixtures_path, uri: str, can_delete: bool | None = True) -> bool
         assert keys[0] == "bar/baz"
         assert _store.get("bar/baz") == 1
 
-    if can_delete:
-        # pop
-        store.put("popped", 1)
-        assert store.pop("popped") == 1
-        assert store.get("popped", raise_on_nonexist=False) is None
+    # pop
+    store.put("popped", 1)
+    assert store.pop("popped") == 1
+    assert store.get("popped", raise_on_nonexist=False) is None
 
-        # delete
-        store.put("to_delete", 1)
-        assert store.exists("to_delete")
-        store.delete("to_delete")
-        assert not store.exists("to_delete")
-        assert (
-            store.pop("seri", deserialization_func=lambda x: x.decode().upper())
-            == "HELLO"
-        )
+    # delete
+    store.put("to_delete", 1)
+    assert store.exists("to_delete")
+    store.delete("to_delete")
+    assert not store.exists("to_delete")
+    assert (
+        store.pop("seri", deserialization_func=lambda x: x.decode().upper()) == "HELLO"
+    )
 
-        # key_prefix: iterate_keys should return relative keys that work with delete
-        prefixed = get_store(uri, key_prefix="test_prefix")
-        prefixed.put("pkey1", "pval1")
-        prefixed.put("pkey2", "pval2")
-        pkeys = list(prefixed.iterate_keys())
-        assert len(pkeys) == 2
-        assert all(prefixed.get(k) is not None for k in pkeys)
-        for k in pkeys:
-            prefixed.delete(k)
-        assert len(list(prefixed.iterate_keys())) == 0
+    # key_prefix: iterate_keys should return relative keys that work with delete
+    prefixed = get_store(uri, key_prefix="test_prefix")
+    prefixed.put("pkey1", "pval1")
+    prefixed.put("pkey2", "pval2")
+    pkeys = list(prefixed.iterate_keys())
+    assert len(pkeys) == 2
+    assert all(prefixed.get(k) is not None for k in pkeys)
+    for k in pkeys:
+        prefixed.delete(k)
+    assert len(list(prefixed.iterate_keys())) == 0
 
     # ttl
-    if can_delete:
-        store.default_ttl = 1
+    store.default_ttl = 1
+    store.put("expired", 1, ttl=1)
+    assert store.get("expired") == 1
+    time.sleep(1)
+    assert store.get("expired", raise_on_nonexist=False) is None
+    if isinstance(store, (RedisStore, SqlStore, MemoryStore)):
         store.put("expired", 1, ttl=1)
         assert store.get("expired") == 1
         time.sleep(1)
         assert store.get("expired", raise_on_nonexist=False) is None
-        if isinstance(store, (RedisStore, SqlStore, MemoryStore)):
-            store.put("expired", 1, ttl=1)
-            assert store.get("expired") == 1
-            time.sleep(1)
-            assert store.get("expired", raise_on_nonexist=False) is None
 
     # checksum
     assert DEFAULT_HASH_ALGORITHM == "sha1"
@@ -236,10 +231,6 @@ def test_store_memory(fixtures_path):
     assert _test_store(fixtures_path, "memory://")
 
 
-def test_store_zip(tmp_path, fixtures_path):
-    assert _test_store(fixtures_path, tmp_path / "store.zip", can_delete=False)
-
-
 def test_store_fs(tmp_path, fixtures_path):
     assert _test_store(fixtures_path, tmp_path)
 
@@ -286,7 +277,6 @@ def test_store_initialize(tmp_path, fixtures_path):
     assert isinstance(get_store(f"sqlite:///{tmp_path}/db"), SqlStore)
     # assert isinstance(get_store("postgresql:///db"), SqlStore)
     # assert isinstance(get_store("mysql:///db"), SqlStore)
-    assert isinstance(get_store("./store.zip"), ZipStore)
 
     store = StoreModel(uri="memory:///").to_store()
     assert isinstance(store, MemoryStore)
