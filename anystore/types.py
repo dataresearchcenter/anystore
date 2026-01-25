@@ -1,10 +1,34 @@
 from datetime import datetime
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AnyStr, Generator, Type, TypeAlias, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    AnyStr,
+    Generator,
+    Type,
+    TypeAlias,
+    TypeVar,
+)
+
+from pydantic import HttpUrl
+from pydantic.functional_validators import BeforeValidator
 
 if TYPE_CHECKING:
     from anystore.mixins import BaseModel
+
+
+def _validate_http_url(v: Any) -> str:
+    """Validate as HttpUrl but return as string."""
+    if isinstance(v, HttpUrl):
+        return str(v)
+    # Validate by parsing as HttpUrl, then return as string
+    return str(HttpUrl(v))
+
+
+# HttpUrl that validates as URL but is typed and behaves as plain string
+HttpUrlStr = Annotated[str, BeforeValidator(_validate_http_url)]
 
 Uri: TypeAlias = PathLike | Path | str
 Value: TypeAlias = str | bytes
