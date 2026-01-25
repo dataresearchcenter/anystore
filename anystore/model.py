@@ -75,6 +75,25 @@ class Stats(BaseStats):
     key: str
     """Full path of key"""
 
+    mimetype: str
+    """Mime type for that key"""
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_mimetype(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Populate the mimetype based on response headers or extension"""
+        if not values.get("mimetype"):
+            raw = values.get("raw", {})
+            if raw:
+                raw = {k.lower(): v for k, v in raw.items()}
+                mtype = raw.get("contenttype") or raw.get("mimetype")
+                mtype = normalize_mimetype(mtype)
+                if mtype not in (DEFAULT, "binary/octet-stream"):
+                    values["mimetype"] = mtype
+        if not values.get("mimetype"):
+            values["mimetype"] = guess_mimetype(values.get("name", ""))
+        return values
+
     @property
     def uri(self) -> str:
         """
@@ -89,18 +108,6 @@ class Stats(BaseStats):
         if store.is_fslike:
             return join_uri(self.store, self.key)
         return self.key
-
-    @property
-    def mimetype(self) -> str:
-        """
-        Return the mimetype based on response headers or extension
-        """
-        if self.raw:
-            mtype = self.raw.get("ContentType") or self.raw.get("mimetype")
-            mtype = normalize_mimetype(mtype)
-            if mtype not in (DEFAULT, "binary/octet-stream"):
-                return mtype
-        return guess_mimetype(self.name)
 
 
 class StoreModel(BaseModel):
