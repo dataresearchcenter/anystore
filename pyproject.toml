@@ -41,6 +41,10 @@ redis = ["redis (>=4.0.0)", "fakeredis (>=2.26.2,<3.0.0)"]
 [project.scripts]
 anystore = "anystore.cli:cli"
 
+[project.entry-points."fsspec.specs"]
+sql = "anystore.fs.sql.SqlFileSystem"
+redis = "anystore.fs.redis.RedisFileSystem"
+
 [project.urls]
 Homepage = "https://docs.investigraph.dev/lib/anystore"
 Documentation = "https://docs.investigraph.dev/lib/anystore"
