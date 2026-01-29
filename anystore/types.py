@@ -2,7 +2,6 @@ from datetime import datetime
 from os import PathLike
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING,
     Annotated,
     Any,
     AnyStr,
@@ -12,11 +11,8 @@ from typing import (
     TypeVar,
 )
 
-from pydantic import HttpUrl
+from pydantic import BaseModel, HttpUrl
 from pydantic.functional_validators import BeforeValidator
-
-if TYPE_CHECKING:
-    from anystore.mixins import BaseModel
 
 
 def _validate_http_url(v: Any) -> str:
