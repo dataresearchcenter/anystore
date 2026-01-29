@@ -1,6 +1,6 @@
 import pytest
 
-from anystore import serialize
+from anystore.logic import serialize
 from anystore.mixins import BaseModel
 
 
