@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 
-from anystore.tags import get_tags
+from anystore.interface.tags import get_tags
 
 
 def test_tags(tmp_path):

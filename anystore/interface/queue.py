@@ -3,8 +3,8 @@ from typing import Generator, Generic, TypeVar
 
 from pydantic import BaseModel
 
+from anystore.interface.tags import Tags
 from anystore.store import Store, get_store
-from anystore.tags import Tags
 from anystore.types import Model, Uri
 from anystore.util import ensure_uuid
 

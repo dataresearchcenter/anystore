@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from anystore.queue import Queue, Queues, get_queue
+from anystore.interface.queue import Queue, Queues, get_queue
 from anystore.store import get_store
 
 
