@@ -24,10 +24,13 @@ Python usage:
     ```
 """
 
+from __future__ import annotations
+
 import csv
 import logging
 from enum import StrEnum
 from typing import (
+    TYPE_CHECKING,
     Any,
     AnyStr,
     Generator,
@@ -37,6 +40,9 @@ from typing import (
     Type,
     TypeVar,
 )
+
+if TYPE_CHECKING:
+    from anystore.store import Store
 
 import httpx
 import orjson
@@ -51,6 +57,7 @@ from anystore.logic.io import (
     SmartHandler,
     Uri,
     smart_open,
+    stream,
 )
 from anystore.types import M, MGenerator, SDict, SDictGenerator
 from anystore.util import clean_dict
@@ -75,6 +82,13 @@ class IOFormat(StrEnum):
 
     csv = "csv"
     json = "json"
+
+
+def stream_bytes(key: str, source: "Store", target: "Store", **kwargs: Any) -> None:
+    """Stream binary content for *key* from *source* to *target* store."""
+    with source.open(key, "rb", **kwargs) as i:
+        with target.open(key, "wb") as o:
+            stream(i, o)
 
 
 def smart_stream(

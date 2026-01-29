@@ -14,6 +14,7 @@ from anystore.io import (
     smart_write,
 )
 from anystore.logging import configure_logging
+from anystore.logic.io import stream
 from anystore.mirror import mirror
 from anystore.settings import Settings
 from anystore.store import get_store
@@ -161,8 +162,7 @@ def cli_io(
     with ErrorHandler():
         with smart_open(i) as reader:
             with smart_open(o, "wb") as writer:
-                while chunk := reader.read(8192):
-                    writer.write(chunk)
+                stream(reader, writer)
 
 
 @cli.command("csv2json")

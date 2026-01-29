@@ -2,6 +2,7 @@
 Mirror one store to another
 """
 
+from anystore.io import stream_bytes
 from anystore.logging import get_logger
 from anystore.store import Store
 
@@ -34,9 +35,7 @@ def mirror(
             continue
 
         log.info(f"Mirroring key `{key}` ...", source=source.uri, target=target.uri)
-        with source.open(key, "rb") as i:
-            with target.open(key, "wb") as o:
-                o.write(i.read())
+        stream_bytes(key, source, target)
         mirrored += 1
 
     log.info("Done mirroring.", source=source.uri, target=target.uri)

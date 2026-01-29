@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import IO, Any, Generator
 
 from anystore.core.resource import UriResource
-from anystore.io import DEFAULT_MODE
+from anystore.io import DEFAULT_MODE, stream_bytes
 from anystore.model import Stats
 from anystore.store import Store, get_store
 from anystore.types import Uri
@@ -33,9 +33,8 @@ class VirtualStore:
             store, uri = res.store, res.key
         if store.is_local:  # omit download
             return ensure_uri(store._keys.to_fs_key(uri))
-        with store.open(uri, mode=kwargs.pop("mode", "rb"), **kwargs) as i:
-            with self.store.open(uri, mode="wb") as o:
-                o.write(i.read())
+        kwargs.pop("mode", None)
+        stream_bytes(uri, store, self.store, **kwargs)
         return str(uri)
 
     def cleanup(self, path: Uri | None = None) -> None:

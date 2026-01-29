@@ -8,6 +8,7 @@ from typing import IO, Any, AnyStr, BinaryIO, Generator, TextIO, TypeAlias
 from anystore.exceptions import DoesNotExist
 from anystore.types import Uri as _Uri
 
+CHUNK_SIZE = 8192
 DEFAULT_MODE = "rb"
 DEFAULT_WRITE_MODE = "wb"
 
@@ -97,3 +98,9 @@ def smart_open(
         raise DoesNotExist(str(e))
     finally:
         handler.close()
+
+
+def stream(reader: IO, writer: IO, chunk_size: int = CHUNK_SIZE) -> None:
+    """Copy data from *reader* to *writer* in chunks."""
+    while chunk := reader.read(chunk_size):
+        writer.write(chunk)
