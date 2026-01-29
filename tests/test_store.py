@@ -15,7 +15,7 @@ from anystore.fs.redis import RedisFileSystem
 from anystore.fs.sql import SqlFileSystem
 from anystore.io import smart_read
 from anystore.model import StoreModel
-from anystore.store import Store, get_store, get_store_for_uri
+from anystore.store import Store, get_store
 from anystore.store.virtual import get_virtual, open_virtual
 from anystore.util import DEFAULT_HASH_ALGORITHM, ensure_uri, join_uri, uri_to_path
 from tests.conftest import setup_s3
@@ -296,25 +296,6 @@ def test_store_virtual(fixtures_path):
 
     with open_virtual(fixtures_path / "lorem.txt") as i:
         assert i.read().decode().startswith("Lorem")
-
-
-def test_store_for_uri(tmp_path):
-    store, uri = get_store_for_uri(tmp_path / "foo/bar.txt")
-    assert isinstance(store, Store)
-    assert store.uri.endswith("foo")
-    assert uri == "bar.txt"
-
-    store, uri = get_store_for_uri("http://example.org/foo/bar.txt")
-    assert isinstance(store, Store)
-    assert store.uri.endswith("foo")
-    assert uri == "bar.txt"
-
-    with pytest.raises(NotImplementedError):
-        store, uri = get_store_for_uri("memory://foo/bar.txt")
-    with pytest.raises(NotImplementedError):
-        store, uri = get_store_for_uri("redis://foo/bar.txt")
-    with pytest.raises(NotImplementedError):
-        store, uri = get_store_for_uri(f"sqlite:///{tmp_path}/db.sqlite/foo/bar.txt")
 
 
 def _test_store_external(fixtures_path, store: Store):

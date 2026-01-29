@@ -3,9 +3,10 @@ import tempfile
 from pathlib import Path
 from typing import IO, Any, Generator
 
+from anystore.core.resource import UriResource
 from anystore.io import DEFAULT_MODE
 from anystore.model import Stats
-from anystore.store import Store, get_store, get_store_for_uri
+from anystore.store import Store, get_store
 from anystore.types import Uri
 from anystore.util import (
     DEFAULT_HASH_ALGORITHM,
@@ -28,7 +29,8 @@ class VirtualStore:
 
     def download(self, uri: Uri, store: Store | None = None, **kwargs) -> str:
         if store is None:
-            store, uri = get_store_for_uri(uri, serialization_mode="raw")
+            res = UriResource(uri)
+            store, uri = res.store, res.key
         if store.is_local:  # omit download
             return ensure_uri(store._keys.to_fs_key(uri))
         with store.open(uri, mode=kwargs.pop("mode", "rb"), **kwargs) as i:
@@ -110,7 +112,8 @@ def open_virtual(
     """
     mode = kwargs.get("mode", DEFAULT_MODE)
     if store is None:
-        store, uri = get_store_for_uri(uri)
+        res = UriResource(uri)
+        store, uri = res.store, res.key
     info = store.info(uri)
     if store.is_local and not enforce_local_tmp:
         tmp = None
@@ -168,7 +171,8 @@ def get_virtual_path(
         The absolute temporary `path` as a `pathlib.Path` object
     """
     if store is None:
-        store, uri = get_store_for_uri(uri)
+        res = UriResource(uri)
+        store, uri = res.store, res.key
     if store.is_local:
         tmp = None
         path = uri_to_path(store._keys.to_fs_key(uri))
