@@ -161,7 +161,8 @@ def cli_io(
     with ErrorHandler():
         with smart_open(i) as reader:
             with smart_open(o, "wb") as writer:
-                writer.write(reader.read())
+                while chunk := reader.read(8192):
+                    writer.write(chunk)
 
 
 @cli.command("csv2json")
