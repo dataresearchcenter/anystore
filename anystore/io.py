@@ -24,48 +24,39 @@ Python usage:
     ```
 """
 
-import contextlib
 import csv
 import logging
-import sys
 from enum import StrEnum
-from io import BytesIO, IOBase, StringIO
 from typing import (
-    IO,
     Any,
     AnyStr,
-    BinaryIO,
     Generator,
     Iterable,
     Literal,
     Self,
-    TextIO,
     Type,
-    TypeAlias,
     TypeVar,
 )
 
 import httpx
 import orjson
-from fsspec import open
-from fsspec.core import OpenFile
 from pydantic import BaseModel
 from structlog.stdlib import BoundLogger
 from tqdm import tqdm
 
-from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
-from anystore.model import Stats
+from anystore.logic.io import (
+    DEFAULT_MODE,
+    DEFAULT_WRITE_MODE,
+    SmartHandler,
+    Uri,
+    smart_open,
+)
 from anystore.types import M, MGenerator, SDict, SDictGenerator
-from anystore.types import Uri as _Uri
-from anystore.util import clean_dict, ensure_uri
+from anystore.util import clean_dict
 
 log = get_logger(__name__)
 
-DEFAULT_MODE = "rb"
-DEFAULT_WRITE_MODE = "wb"
-
-Uri: TypeAlias = _Uri | BinaryIO | TextIO
 T = TypeVar("T")
 Formats = Literal["csv", "json"]
 FORMAT_CSV = "csv"
@@ -84,89 +75,6 @@ class IOFormat(StrEnum):
 
     csv = "csv"
     json = "json"
-
-
-def _get_sysio(mode: str | None = DEFAULT_MODE) -> TextIO | BinaryIO:
-    if mode and "r" in mode:
-        io = sys.stdin
-    else:
-        io = sys.stdout
-    if mode and "b" in mode:
-        return io.buffer
-    return io
-
-
-class SmartHandler:
-    def __init__(
-        self,
-        uri: Uri,
-        **kwargs: Any,
-    ) -> None:
-        self.uri = uri
-        self.is_buffer = self.uri == "-"
-        kwargs["mode"] = kwargs.get("mode", DEFAULT_MODE)
-        self.sys_io = _get_sysio(kwargs["mode"])
-        self.kwargs = kwargs
-        self.handler: IO | None = None
-
-    def open(self) -> IO[AnyStr]:
-        try:
-            if self.is_buffer:
-                return self.sys_io
-            elif isinstance(self.uri, (BytesIO, StringIO, IOBase)):
-                return self.uri
-            else:
-                self.uri = ensure_uri(self.uri, http_unquote=False)
-                handler: OpenFile = open(self.uri, **self.kwargs)
-                self.handler = handler.open()
-                return self.handler
-        except FileNotFoundError as e:
-            raise DoesNotExist(str(e))
-
-    def close(self):
-        if not self.is_buffer and self.handler is not None:
-            self.handler.close()
-
-    def __enter__(self):
-        return self.open()
-
-    def __exit__(self, *args, **kwargs) -> None:
-        self.close()
-
-
-@contextlib.contextmanager
-def smart_open(
-    uri: Uri,
-    mode: str | None = DEFAULT_MODE,
-    **kwargs: Any,
-) -> Generator[IO[AnyStr], None, None]:
-    """
-    IO context similar to pythons built-in `open()`.
-
-    Example:
-        ```python
-        from anystore import smart_open
-
-        with smart_open("s3://mybucket/foo.csv") as fh:
-            return fh.read()
-        ```
-
-    Args:
-        uri: string or path-like key uri to open, e.g. `./local/data.txt` or
-            `s3://mybucket/foo`
-        mode: open mode, default `rb` for byte reading.
-        **kwargs: pass through storage-specific options
-
-    Yields:
-        A generic file-handler like context object
-    """
-    handler = SmartHandler(uri, mode=mode, **kwargs)
-    try:
-        yield handler.open()
-    except FileNotFoundError as e:
-        raise DoesNotExist(str(e))
-    finally:
-        handler.close()
 
 
 def smart_stream(
@@ -575,17 +483,3 @@ def logged_items(
             yield item
     if ix:
         log_.info(f"{action} {ix} `{item_name}s`: Done.", **log_kwargs)
-
-
-def get_info(key: _Uri) -> Stats:
-    from anystore.store import get_store_for_uri
-
-    store, key = get_store_for_uri(key)
-    return store.info(key)
-
-
-def get_checksum(key: _Uri) -> str:
-    from anystore.store import get_store_for_uri
-
-    store, key = get_store_for_uri(key)
-    return store.checksum(key)
