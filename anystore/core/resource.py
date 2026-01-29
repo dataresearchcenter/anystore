@@ -12,9 +12,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import IO, Any, Callable, ContextManager, Generator
 
+from anystore.logic.serialize import Mode
 from anystore.logic.uri import UriHandler
 from anystore.model import Stats
-from anystore.serialize import Mode
 from anystore.store.base import Store
 from anystore.types import Model, Uri
 from anystore.util import CURRENT

@@ -33,7 +33,7 @@ from structlog import BoundLogger
 
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
-from anystore.serialize import Mode
+from anystore.logic.serialize import Mode
 from anystore.settings import Settings
 from anystore.store import Store, get_store
 from anystore.util import make_signature_key
@@ -99,7 +99,7 @@ def anycache(
         will not be cached (this can be used to dynamically disable caching
         based on function input)
 
-    See [`anystore.serialize`][anystore.serialize] for serialization reference.
+    See [`anystore.logic.serialize`][anystore.logic.serialize] for serialization reference.
 
     Args:
         func: The function to wrap

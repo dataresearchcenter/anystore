@@ -18,7 +18,7 @@ nav:
       - anystore.interface.tags: reference/tags.md
       - anystore.model: reference/model.md
       - anystore.cli: reference/cli.md
-      - anystore.serialize: reference/serialize.md
+      - anystore.logic.serialize: reference/serialize.md
       - anystore.decorators: reference/decorators.md
       - anystore.settings: reference/settings.md
       - anystore.lock: reference/lock.md

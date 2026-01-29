@@ -25,8 +25,8 @@ from anystore.core.keys import Keys
 from anystore.exceptions import DoesNotExist
 from anystore.io import DEFAULT_MODE
 from anystore.logging import get_logger
+from anystore.logic.serialize import Mode, from_store, to_store
 from anystore.model import Info, Stats, StoreModel
-from anystore.serialize import Mode, from_store, to_store
 from anystore.settings import Settings
 from anystore.types import Model, Raise, Uri, V
 from anystore.util import DEFAULT_HASH_ALGORITHM, clean_dict, make_checksum

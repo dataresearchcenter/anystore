@@ -12,8 +12,8 @@ from urllib.parse import urlparse
 from pydantic import AliasChoices, ConfigDict, Field, field_validator, model_validator
 from rigour.mime import DEFAULT, normalize_mimetype
 
+from anystore.logic.serialize import Mode
 from anystore.mixins import BaseModel
-from anystore.serialize import Mode
 from anystore.settings import Settings
 from anystore.types import Model, Uri
 from anystore.util import (
