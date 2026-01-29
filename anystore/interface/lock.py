@@ -9,7 +9,7 @@ class Lock:
 
     Example:
         ```python
-        from anystore.lock import Lock
+        from anystore.interface.lock import Lock
         from anystore.store import get_store
 
         store = get_store("redis://localhost")

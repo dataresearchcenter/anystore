@@ -1,1 +1,1 @@
-::: anystore.lock
+::: anystore.interface.lock
