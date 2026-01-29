@@ -44,7 +44,6 @@ from typing import (
 if TYPE_CHECKING:
     from anystore.store import Store
 
-import httpx
 import orjson
 from pydantic import BaseModel
 from structlog.stdlib import BoundLogger
@@ -115,16 +114,9 @@ def smart_stream(
     Yields:
         A generator of `str` or `byte` content, depending on `mode`
     """
-    if str(uri).startswith("http"):
-        with httpx.stream("GET", str(uri)) as fh:
-            for line in fh.iter_lines():
-                if "b" in (mode or DEFAULT_MODE):
-                    line = line.encode()
-                yield line.strip()
-    else:
-        with smart_open(uri, mode, **kwargs) as fh:
-            while line := fh.readline():
-                yield line.strip()
+    with smart_open(uri, mode, **kwargs) as fh:
+        while line := fh.readline():
+            yield line.strip()
 
 
 def smart_stream_csv(uri: Uri, **kwargs: Any) -> SDictGenerator:

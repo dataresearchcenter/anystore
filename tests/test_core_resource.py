@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -97,7 +97,7 @@ def test_core_resource_info(tmp_uri):
     assert info.key == "info_test.pdf"
     assert info.size == len(lorem)
     if info.created_at is not None:
-        assert info.created_at.date() == datetime.now().date()
+        assert info.created_at.date() == datetime.now(timezone.utc).date()
 
 
 def test_core_resource_checksum(tmp_uri):

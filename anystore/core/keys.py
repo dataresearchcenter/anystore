@@ -8,6 +8,7 @@ from fsspec.implementations.http import HTTPFileSystem
 from fsspec.implementations.local import LocalFileSystem
 from fsspec.implementations.memory import MemoryFileSystem
 
+from anystore.fs.api import ApiFileSystem
 from anystore.fs.redis import RedisFileSystem
 from anystore.fs.sql import SqlFileSystem
 from anystore.logic.uri import UriHandler
@@ -55,6 +56,8 @@ class Keys:
             return path
         if isinstance(self.fs, SqlFileSystem):
             return ""
+        if isinstance(self.fs, ApiFileSystem):
+            return ApiFileSystem._strip_protocol(str(self.uri))
         if isinstance(self.fs, HTTPFileSystem):
             return str(self.uri)
         # other fsspec implementations want relative path with netloc

@@ -1,8 +1,10 @@
 import os
+import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
+import uvicorn
 from fsspec.implementations.http import HTTPFileSystem
 from fsspec.implementations.local import LocalFileSystem
 from fsspec.implementations.memory import MemoryFileSystem
@@ -10,7 +12,9 @@ from moto import mock_aws
 from rigour.mime import PLAIN
 from s3fs.core import S3FileSystem
 
+from anystore.api import create_app
 from anystore.exceptions import DoesNotExist
+from anystore.fs.api import ApiFileSystem
 from anystore.fs.redis import RedisFileSystem
 from anystore.fs.sql import SqlFileSystem
 from anystore.io import smart_read
@@ -93,7 +97,7 @@ def _test_store(fixtures_path, uri: str) -> bool:
     assert keys[0] == "foo/bar/baz"
 
     # glob for "child" stores (eg: s3://bucket/path)
-    if store.is_fslike:
+    if not store.is_sql:
         _store = get_store(join_uri(store.uri, "foo"))
         keys = [k for k in _store.iterate_keys()]
         assert len(keys) == 1
@@ -151,9 +155,9 @@ def _test_store(fixtures_path, uri: str) -> bool:
     assert info.uri.startswith(str(store.uri))
     assert info.uri.endswith("lorem2/ipsum.pdf")
     if info.created_at is not None:
-        assert info.created_at.date() == datetime.now().date()
+        assert info.created_at.date() == datetime.now(timezone.utc).date()
     if info.updated_at is not None:
-        assert info.updated_at.date() == datetime.now().date()
+        assert info.updated_at.date() == datetime.now(timezone.utc).date()
 
     # streaming io
     lorem = smart_read(fixtures_path / "lorem.txt", mode="r")
@@ -218,6 +222,27 @@ def test_store_memory(fixtures_path):
     assert _test_store(fixtures_path, "memory://")
 
 
+def test_store_api(fixtures_path):
+    store = get_store("memory://test-api")
+    app = create_app(store=store)
+    config = uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning")
+    server = uvicorn.Server(config)
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    while not server.started:
+        pass
+    host, port = server.servers[0].sockets[0].getsockname()
+    uri = f"anystore+http://{host}:{port}"
+    try:
+        api_store = get_store(uri)
+        assert isinstance(api_store._fs, ApiFileSystem)
+        assert isinstance(api_store._fs, HTTPFileSystem)
+        assert _test_store(fixtures_path, uri)
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
+
+
 def test_store_fs(tmp_path, fixtures_path):
     assert _test_store(fixtures_path, tmp_path)
 
@@ -263,6 +288,7 @@ def test_store_initialize(tmp_path, fixtures_path):
     assert isinstance(get_store(f"sqlite:///{tmp_path}/db")._fs, SqlFileSystem)
     assert isinstance(get_store("postgresql:///db")._fs, SqlFileSystem)
     assert isinstance(get_store("mysql:///db")._fs, SqlFileSystem)
+    assert isinstance(get_store("anystore+http://localhost")._fs, ApiFileSystem)
 
     # raise missing dependencies
     with pytest.raises(ImportError) as err:
