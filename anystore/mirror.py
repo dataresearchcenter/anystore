@@ -20,7 +20,9 @@ def mirror(
     log.info("Start mirroring ...", source=source.uri, target=target.uri)
     skipped = 0
     mirrored = 0
-    for key in source.iterate_keys(glob=glob, prefix=prefix):
+    for key in source.iterate_keys(
+        glob=glob, prefix=prefix, exclude_prefix=exclude_prefix
+    ):
 
         if not overwrite and target.exists(key):
             log.info(

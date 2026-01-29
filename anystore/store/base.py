@@ -571,6 +571,8 @@ class Store(StoreModel, Generic[V, Raise]):
         mode = mode or DEFAULT_MODE
         kwargs = self.ensure_kwargs(**kwargs)
         key = self._keys.to_fs_key(key)
+        if "w" in mode:
+            self.ensure_parent(key)
         return self._fs.open(key, mode=mode, **kwargs)
 
     def touch(self, key: Uri, **kwargs: Any) -> datetime:
@@ -588,9 +590,9 @@ class Store(StoreModel, Generic[V, Raise]):
         self.put(key, now, **kwargs)
         return now
 
-    def ensure_parent(self, key: Uri) -> None:
+    def ensure_parent(self, fs_key: Uri) -> None:
         """Ensure existence of parent path. This mostly only is relevant for
         stores on local filesystem"""
         if self.is_local:
-            parent = Path(key).parent
+            parent = Path(fs_key).parent
             self._fs.mkdirs(parent, exist_ok=True)
