@@ -4,18 +4,18 @@
 Pydantic model interfaces to initialize stores and handle metadata for keys.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Callable, Self
 from urllib.parse import urlparse
 
-from pydantic import field_validator, model_validator
+from pydantic import AliasChoices, ConfigDict, Field, field_validator, model_validator
 from rigour.mime import DEFAULT, normalize_mimetype
 
 from anystore.mixins import BaseModel
 from anystore.serialize import Mode
 from anystore.settings import Settings
-from anystore.types import Model, SDict, Uri
+from anystore.types import Model, Uri
 from anystore.util import (
     SCHEME_FILE,
     SCHEME_MEMORY,
@@ -23,51 +23,89 @@ from anystore.util import (
     SCHEME_S3,
     ensure_uri,
     guess_mimetype,
-    join_uri,
 )
 
 settings = Settings()
 
 if TYPE_CHECKING:
-    from anystore.store.base import BaseStore
+    from anystore.store import Store
 
 
-class BaseStats(BaseModel):
-    """Shared base metadata object"""
+CREATED_AT_CHOICES = (
+    "created_at",
+    "created",
+)
 
-    created_at: datetime | None = None
+UPDATED_AT_CHOICES = (
+    "updated_at",
+    "mtime",
+    "Last-Modified",
+    "LastModified",
+)
+
+
+def _ensure_datetime(val: Any) -> datetime | None:
+    """Coerce int/float timestamps and date strings to datetime."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        if val.tzinfo is None:
+            val = val.replace(tzinfo=timezone.utc)
+        return val
+    if isinstance(val, (int, float)):
+        return datetime.fromtimestamp(val, tz=timezone.utc)
+    if isinstance(val, str):
+        from dateutil.parser import parse as parse_date
+
+        try:
+            return parse_date(val)
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+class Info(BaseModel):
+    """Streamline fs.info()"""
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    name: str
+    """Key name: last part of the key (aka file name without path)"""
+
+    created_at: datetime | None = Field(
+        default=None,
+        validation_alias=AliasChoices(*CREATED_AT_CHOICES),
+    )
     """Created at timestamp"""
 
-    updated_at: datetime | None = None
+    updated_at: datetime | None = Field(
+        default=None,
+        validation_alias=AliasChoices(*UPDATED_AT_CHOICES),
+    )
     """Last updated timestamp"""
 
     size: int
     """Size (content length) in bytes"""
 
-    raw: SDict = {}
-    """Raw data (to preserve headers)"""
-
-    @field_validator("size", mode="before")
+    @field_validator("created_at", "updated_at", mode="before")
     @classmethod
-    def ensure_size(cls, value: Any) -> Any:
-        return value or 0
+    def coerce_timestamp(cls, v: Any) -> datetime | None:
+        return _ensure_datetime(v)
 
     @model_validator(mode="after")
-    def ensure_updated_at(self) -> Self:
-        self.updated_at = self.updated_at or self.created_at
+    def ensure_timestamp_fallback(self) -> Self:
+        """Fall back created_at <-> updated_at."""
+        if self.created_at and not self.updated_at:
+            self.updated_at = self.created_at
+        elif self.updated_at and not self.created_at:
+            self.created_at = self.updated_at
         return self
 
-    @model_validator(mode="after")
-    def ensure_created_at(self) -> Self:
-        self.created_at = self.created_at or self.updated_at
-        return self
 
-
-class Stats(BaseStats):
+class Stats(Info):
     """Meta information for a store key"""
 
-    name: str
-    """Key name: last part of the key (aka file name without path)"""
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     store: str
     """Store base uri"""
@@ -81,12 +119,11 @@ class Stats(BaseStats):
     @model_validator(mode="before")
     @classmethod
     def ensure_mimetype(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Populate the mimetype based on response headers or extension"""
+        """Extract mimetype from fsspec info dict headers."""
         if not values.get("mimetype"):
-            raw = values.get("raw", {})
-            if raw:
-                raw = {k.lower(): v for k, v in raw.items()}
-                mtype = raw.get("contenttype") or raw.get("mimetype")
+            lower = {k.lower(): v for k, v in values.items()}
+            mtype = lower.get("contenttype") or lower.get("mimetype")
+            if mtype:
                 mtype = normalize_mimetype(mtype)
                 if mtype not in (DEFAULT, "binary/octet-stream"):
                     values["mimetype"] = mtype
@@ -97,17 +134,13 @@ class Stats(BaseStats):
     @property
     def uri(self) -> str:
         """
-        Computed uri property. Absolute when file-like prepended with store
-        schema, relative if using different store backend
+        Computed uri property from store uri and key.
 
         Returns:
-            file-like: `file:///tmp/foo.txt`, `ssh://user@host:data.csv`
-            relative path for other (redis, sql, ...): `tmp/foo.txt`
+            e.g. `file:///tmp/foo.txt`, `ssh://user@host:data.csv`,
+                `sqlite:////tmp/db.sqlite/foo/bar`
         """
-        store = StoreModel(uri=self.store)
-        if store.is_fslike:
-            return join_uri(self.store, self.key)
-        return self.key
+        return f"{self.store}/{self.key}"
 
 
 class StoreModel(BaseModel):
@@ -115,8 +148,6 @@ class StoreModel(BaseModel):
 
     uri: Uri
     """Store base uri"""
-    key_prefix: str | None = None
-    """Global key prefix for all keys"""
     serialization_mode: Mode | None = settings.serialization_mode
     """Default serialization (auto, raw, pickle, json)"""
     serialization_func: Callable | None = None
@@ -133,8 +164,6 @@ class StoreModel(BaseModel):
     """Default ttl for keys (only backends that support it: redis, sql, ..)"""
     backend_config: dict[str, Any] = {}
     """Backend-specific configuration to pass through for initialization"""
-    readonly: bool | None = False
-    """Consider this store as a read-only store, writing will raise an exception"""
 
     @cached_property
     def scheme(self) -> str:
@@ -176,10 +205,9 @@ class StoreModel(BaseModel):
     @field_validator("uri", mode="before")
     @classmethod
     def ensure_uri(cls, v: Any) -> str:
-        uri = ensure_uri(v)
-        return uri.rstrip("/")
+        return ensure_uri(v)
 
-    def to_store(self, **kwargs) -> "BaseStore":
+    def to_store(self, **kwargs) -> "Store":
         from anystore.store import get_store
 
         return get_store(**{**self.model_dump(), **kwargs})

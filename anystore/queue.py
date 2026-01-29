@@ -3,8 +3,7 @@ from typing import Generator, Generic, TypeVar
 
 from pydantic import BaseModel
 
-from anystore.store import get_store
-from anystore.store.base import BaseStore
+from anystore.store import Store, get_store
 from anystore.tags import Tags
 from anystore.types import Model, Uri
 from anystore.util import ensure_uuid
@@ -22,7 +21,7 @@ class Queue(Tags, Generic[T]):
     and retrieve data is expected to have that strict type.
     """
 
-    def __init__(self, store: BaseStore, model: Model | None = None) -> None:
+    def __init__(self, store: Store, model: Model | None = None) -> None:
         super().__init__(store)
         self.model = model
         # Override the store methods assigned by Tags to use our typed versions

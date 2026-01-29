@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import io
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from banal import ensure_dict
@@ -21,7 +21,6 @@ from sqlalchemy import (
     Unicode,
     create_engine,
     delete,
-    func,
     insert,
     select,
     update,
@@ -68,7 +67,7 @@ def _make_table(name: str, metadata: MetaData) -> Table:
         Column(
             "timestamp",
             DateTime(timezone=True),
-            server_default=func.now(),
+            default=lambda: datetime.now(timezone.utc),
         ),
         Column("ttl", Integer(), nullable=True),
     )
@@ -222,7 +221,7 @@ class SqlFileSystem(AbstractFileSystem):
             data = row[0] or b""
             return io.BytesIO(data)
         else:
-            return SqlFileWriter(self, path)
+            return SqlFileWriter(self, path, ttl=kwargs.get("ttl"))
 
     # ------------------------------------------------------------------
     # pipe_file / cat_file – efficient bulk read/write
@@ -248,14 +247,15 @@ class SqlFileSystem(AbstractFileSystem):
 
     def _upsert(self, key: str, value: bytes, ttl: int | None = None) -> None:
         conn = self._get_conn()
-        stmt = insert(self._table).values(key=key, value=value, ttl=ttl)
+        now = datetime.now(timezone.utc)
+        stmt = insert(self._table).values(key=key, value=value, ttl=ttl, timestamp=now)
         try:
             conn.execute(stmt)
         except Exception:
             stmt = (
                 update(self._table)
                 .where(self._table.c.key == key)
-                .values(value=value, ttl=ttl)
+                .values(value=value, ttl=ttl, timestamp=now)
             )
             conn.execute(stmt)
         conn.commit()
@@ -302,12 +302,13 @@ class SqlFileSystem(AbstractFileSystem):
 class SqlFileWriter(io.BytesIO):
     """Write buffer that flushes to SQL on close."""
 
-    def __init__(self, fs: SqlFileSystem, path: str):
+    def __init__(self, fs: SqlFileSystem, path: str, ttl: int | None = None):
         super().__init__()
         self._fs = fs
         self._path = path
+        self._ttl = ttl
 
     def close(self) -> None:
         if not self.closed:
-            self._fs._upsert(self._path, self.getvalue())
+            self._fs._upsert(self._path, self.getvalue(), ttl=self._ttl)
         super().close()

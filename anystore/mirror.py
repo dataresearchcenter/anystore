@@ -3,14 +3,14 @@ Mirror one store to another
 """
 
 from anystore.logging import get_logger
-from anystore.store.base import BaseStore
+from anystore.store import Store
 
 log = get_logger(__name__)
 
 
 def mirror(
-    source: BaseStore,
-    target: BaseStore,
+    source: Store,
+    target: Store,
     glob: str | None = None,
     prefix: str | None = None,
     exclude_prefix: str | None = None,

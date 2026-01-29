@@ -41,7 +41,7 @@ assert data["foo"] == "bar"
 
 ## Write data
 
-Data can be written with the [`put`][anystore.store.BaseStore.put] function or via a [file-like handler][anystore.store.BaseStore.open].
+Data can be written with the [`put`][anystore.store.Store.put] function or via a [file-like handler][anystore.store.Store.open].
 
 Any existing data will be overwritten without warning.
 
@@ -56,7 +56,7 @@ with store.open("key", "wb") as fh:
 
 ## Read data
 
-Data can be read in different ways. Use [`get`][anystore.store.BaseStore.get] for just returning the value, [`pop`][anystore.store.BaseStore.pop] for deleting the entry after reading, [`stream`][anystore.store.BaseStore.stream] for reading a data stream line by line or a [file-like handler][anystore.store.BaseStore.open] for reading data similar to pythons built-in `open()`.
+Data can be read in different ways. Use [`get`][anystore.store.Store.get] for just returning the value, [`pop`][anystore.store.Store.pop] for deleting the entry after reading, [`stream`][anystore.store.Store.stream] for reading a data stream line by line or a [file-like handler][anystore.store.Store.open] for reading data similar to pythons built-in `open()`.
 
 ```python
 # simple data get
@@ -76,7 +76,7 @@ with store.open("key", "rb") as fh:
 
 ## Delete data
 
-Just call the [`delete`][anystore.store.BaseStore.delete] function:
+Just call the [`delete`][anystore.store.Store.delete] function:
 
 ```python
 store.delete("key")

@@ -1,3 +1,3 @@
 ::: anystore.store
 
-::: anystore.store.base
+::: anystore.store

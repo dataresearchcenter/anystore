@@ -5,10 +5,15 @@ from typing import IO, Any, Generator
 
 from anystore.io import DEFAULT_MODE
 from anystore.model import Stats
-from anystore.store import get_store, get_store_for_uri
-from anystore.store.base import BaseStore
+from anystore.store import Store, get_store, get_store_for_uri
 from anystore.types import Uri
-from anystore.util import DEFAULT_HASH_ALGORITHM, make_checksum, rm_rf, uri_to_path
+from anystore.util import (
+    DEFAULT_HASH_ALGORITHM,
+    ensure_uri,
+    make_checksum,
+    rm_rf,
+    uri_to_path,
+)
 
 
 class VirtualStore:
@@ -21,11 +26,11 @@ class VirtualStore:
         self.store = get_store(uri=self.path, serialization_mode="raw")
         self.keep = keep
 
-    def download(self, uri: Uri, store: BaseStore | None = None, **kwargs) -> str:
+    def download(self, uri: Uri, store: Store | None = None, **kwargs) -> str:
         if store is None:
             store, uri = get_store_for_uri(uri, serialization_mode="raw")
         if store.is_local:  # omit download
-            return store.get_key(uri)
+            return ensure_uri(store._keys.to_fs_key(uri))
         with store.open(uri, mode=kwargs.pop("mode", "rb"), **kwargs) as i:
             with self.store.open(uri, mode="wb") as o:
                 o.write(i.read())
@@ -59,7 +64,7 @@ class VirtualIO(IO):
 @contextlib.contextmanager
 def open_virtual(
     uri: Uri,
-    store: BaseStore | None = None,
+    store: Store | None = None,
     tmp_prefix: str | None = None,
     keep: bool | None = False,
     checksum: str | None = DEFAULT_HASH_ALGORITHM,
@@ -110,12 +115,12 @@ def open_virtual(
     if store.is_local and not enforce_local_tmp:
         tmp = None
         open = store.open
-        path = uri_to_path(store.get_key(uri))
+        path = uri_to_path(store._keys.to_fs_key(uri))
     else:
         tmp = get_virtual(tmp_prefix, keep)
         uri = tmp.download(uri, store, **kwargs)
         open = tmp.store.open
-        path = uri_to_path(tmp.store.get_key(uri))
+        path = uri_to_path(tmp.store._keys.to_fs_key(uri))
     try:
         with open(uri, mode=mode) as handler:
             if checksum:
@@ -135,7 +140,7 @@ def open_virtual(
 @contextlib.contextmanager
 def get_virtual_path(
     uri: Uri,
-    store: BaseStore | None = None,
+    store: Store | None = None,
     tmp_prefix: str | None = None,
     keep: bool | None = False,
     **kwargs: Any,
@@ -166,11 +171,11 @@ def get_virtual_path(
         store, uri = get_store_for_uri(uri)
     if store.is_local:
         tmp = None
-        path = uri_to_path(store.get_key(uri))
+        path = uri_to_path(store._keys.to_fs_key(uri))
     else:
         tmp = get_virtual(tmp_prefix, keep)
         uri = tmp.download(uri, store, **kwargs)
-        path = uri_to_path(tmp.store.get_key(uri))
+        path = uri_to_path(tmp.store._keys.to_fs_key(uri))
     try:
         yield path
     finally:

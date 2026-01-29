@@ -173,14 +173,28 @@ def join_uri(uri: Any, path: str) -> str:
     Raises:
         ValueError: For invalid uri (e.g. stdin: "-")
     """
-    # FIXME wtf
     uri = ensure_uri(uri)
     if not uri or uri == "-":
         raise ValueError(f"Invalid uri: `{uri}`")
+    parsed = urlsplit(uri)
+    scheme = parsed.scheme
+    # For schemes with empty netloc (e.g. memory://), use path-based joining
+    if not parsed.netloc:
+        base_path = parsed.path.rstrip("/")
+        joined = base_path + "/" + path if not path.startswith("/") else path
+        # Resolve ".." segments
+        segments = []
+        for seg in joined.split("/"):
+            if seg == "..":
+                if segments:
+                    segments.pop()
+            elif seg and seg != ".":
+                segments.append(seg)
+        return f"{scheme}:///{'/'.join(segments)}"
     uri += "/"
-    scheme, *parts = urlsplit(uri)
-    _, *parts = urlsplit(urljoin(urlunsplit(["", *parts]), path))
-    return urlunsplit([scheme, *parts])
+    scheme, *rest = urlsplit(uri)
+    _, *rest = urlsplit(urljoin(urlunsplit(["", *rest]), path))
+    return urlunsplit([scheme, *rest])
 
 
 def join_relpaths(*parts: Uri) -> str:

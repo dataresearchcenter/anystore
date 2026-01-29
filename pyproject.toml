@@ -43,6 +43,9 @@ anystore = "anystore.cli:cli"
 
 [project.entry-points."fsspec.specs"]
 sql = "anystore.fs.sql.SqlFileSystem"
+sqlite = "anystore.fs.sql.SqlFileSystem"
+mysql = "anystore.fs.sql.SqlFileSystem"
+postgresql = "anystore.fs.sql.SqlFileSystem"
 redis = "anystore.fs.redis.RedisFileSystem"
 
 [project.urls]

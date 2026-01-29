@@ -139,7 +139,7 @@ class RedisFileSystem(AbstractFileSystem):
                 raise FileNotFoundError(path)
             return io.BytesIO(data)
         else:
-            return RedisFileWriter(self, path)
+            return RedisFileWriter(self, path, ttl=kwargs.get("ttl"))
 
     # ------------------------------------------------------------------
     # cat_file / pipe_file
@@ -195,12 +195,13 @@ class RedisFileSystem(AbstractFileSystem):
 class RedisFileWriter(io.BytesIO):
     """Write buffer that flushes to Redis on close."""
 
-    def __init__(self, fs: RedisFileSystem, path: str):
+    def __init__(self, fs: RedisFileSystem, path: str, ttl: int | None = None):
         super().__init__()
         self._fs = fs
         self._path = path
+        self._ttl = ttl
 
     def close(self) -> None:
         if not self.closed:
-            self._fs._con.set(self._path, self.getvalue())
+            self._fs._con.set(self._path, self.getvalue(), ex=self._ttl)
         super().close()

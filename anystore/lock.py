@@ -1,5 +1,5 @@
 from anystore.decorators import error_handler
-from anystore.store.base import BaseStore
+from anystore.store import Store
 
 
 class Lock:
@@ -24,7 +24,7 @@ class Lock:
 
     def __init__(
         self,
-        store: BaseStore,
+        store: Store,
         key: str | None = ".LOCK",
         max_retries: float | None = float("inf"),
     ) -> None:

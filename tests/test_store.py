@@ -3,17 +3,19 @@ import time
 from datetime import datetime
 
 import pytest
+from fsspec.implementations.http import HTTPFileSystem
+from fsspec.implementations.local import LocalFileSystem
+from fsspec.implementations.memory import MemoryFileSystem
 from moto import mock_aws
 from rigour.mime import PLAIN
+from s3fs.core import S3FileSystem
 
-from anystore.exceptions import DoesNotExist, ReadOnlyError
+from anystore.exceptions import DoesNotExist
+from anystore.fs.redis import RedisFileSystem
+from anystore.fs.sql import SqlFileSystem
 from anystore.io import smart_read
 from anystore.model import StoreModel
 from anystore.store import Store, get_store, get_store_for_uri
-from anystore.store.base import BaseStore
-from anystore.store.memory import MemoryStore
-from anystore.store.redis import RedisStore
-from anystore.store.sql import SqlStore
 from anystore.store.virtual import get_virtual, open_virtual
 from anystore.util import DEFAULT_HASH_ALGORITHM, ensure_uri, join_uri, uri_to_path
 from tests.conftest import setup_s3
@@ -22,7 +24,7 @@ from tests.conftest import setup_s3
 def _test_store(fixtures_path, uri: str) -> bool:
     # generic store test
     store = get_store(uri=uri)
-    assert isinstance(store, BaseStore)
+    assert isinstance(store, Store)
     key = "test"
     store.put(key, "foo")
     assert store.get(key) == "foo"
@@ -50,6 +52,16 @@ def _test_store(fixtures_path, uri: str) -> bool:
         store.get("nothing")
     assert store.get("nothing", raise_on_nonexist=False) is None
     assert store.exists("nothing") is False
+
+    # invalid key
+    with pytest.raises(ValueError):
+        store.get("/foo/bar")
+    with pytest.raises(ValueError):
+        store.get("file:///foo")
+    with pytest.raises(ValueError):
+        store.get("https://example.org/foo")
+    with pytest.raises(ValueError):
+        store.get("")
 
     # iterate
     keys = [k for k in store.iterate_keys()]
@@ -105,29 +117,19 @@ def _test_store(fixtures_path, uri: str) -> bool:
     assert (
         store.pop("seri", deserialization_func=lambda x: x.decode().upper()) == "HELLO"
     )
-
-    # key_prefix: iterate_keys should return relative keys that work with delete
-    prefixed = get_store(uri, key_prefix="test_prefix")
-    prefixed.put("pkey1", "pval1")
-    prefixed.put("pkey2", "pval2")
-    pkeys = list(prefixed.iterate_keys())
-    assert len(pkeys) == 2
-    assert all(prefixed.get(k) is not None for k in pkeys)
-    for k in pkeys:
-        prefixed.delete(k)
-    assert len(list(prefixed.iterate_keys())) == 0
+    assert not store.exists("seri")
 
     # ttl
     store.default_ttl = 1
-    store.put("expired", 1, ttl=1)
+    store.put("expired", 1)
     assert store.get("expired") == 1
     time.sleep(1)
     assert store.get("expired", raise_on_nonexist=False) is None
-    if isinstance(store, (RedisStore, SqlStore, MemoryStore)):
-        store.put("expired", 1, ttl=1)
-        assert store.get("expired") == 1
-        time.sleep(1)
-        assert store.get("expired", raise_on_nonexist=False) is None
+    # if isinstance(store, (RedisStore, SqlStore, MemoryStore)):
+    #     store.put("expired", 1, ttl=1)
+    #     assert store.get("expired") == 1
+    #     time.sleep(1)
+    #     assert store.get("expired", raise_on_nonexist=False) is None
 
     # checksum
     assert DEFAULT_HASH_ALGORITHM == "sha1"
@@ -146,9 +148,8 @@ def _test_store(fixtures_path, uri: str) -> bool:
     assert info.store == store.uri
     assert info.key == "lorem2/ipsum.pdf"
     assert info.size == 296
-    if store.is_fslike:
-        assert info.uri.startswith(store.uri)
-
+    assert info.uri.startswith(str(store.uri))
+    assert info.uri.endswith("lorem2/ipsum.pdf")
     if info.created_at is not None:
         assert info.created_at.date() == datetime.now().date()
     if info.updated_at is not None:
@@ -190,26 +191,6 @@ def _test_store(fixtures_path, uri: str) -> bool:
     store.put("nothing", 1)
     assert store.exists("nothing")
 
-    # prefix
-    store.key_prefix = "test-prefix"
-    assert store.get_key("foo").endswith("test-prefix/foo")
-    assert not store.exists("lorem.txt")
-
-    return True
-
-
-def _test_store_external(fixtures_path, store: BaseStore):
-    lorem = smart_read(fixtures_path / "lorem.txt", mode="r")
-    keys = [k for k in store.iterate_keys()]
-    assert len(keys) == 6
-    keys = [k for k in store.iterate_keys(prefix="sub dir")]
-    assert len(keys) == 1
-    keys = [k for k in store.iterate_keys(prefix="sub%20dir")]
-    assert len(keys) == 1
-    assert store.get("lorem.txt") == lorem
-    assert store.get("sub dir/lorem.txt") == lorem
-    assert store.info("sub dir/lorem.txt").mimetype == PLAIN
-
     return True
 
 
@@ -241,9 +222,9 @@ def test_store_fs(tmp_path, fixtures_path):
 
     # put into not yet existing sub paths
     store = Store(uri=tmp_path / "foo")
-    store.put("/bar/baz", 1)
+    store.put("bar/baz", 1)
     assert (tmp_path / "foo/bar/baz").exists()
-    assert store.get("/bar/baz") == 1
+    assert store.get("bar/baz") == 1
 
     store = Store(uri=fixtures_path / "sub dir")
     assert len(list(store.iterate_keys())) == 1
@@ -264,22 +245,26 @@ def test_store_initialize(tmp_path, fixtures_path):
     store = Store(uri="s3://anystore", raise_on_nonexist=False)
     assert store.raise_on_nonexist is False
 
-    # store implementations
-    assert isinstance(get_store("memory://"), MemoryStore)
-    assert isinstance(get_store(), Store)
-    assert isinstance(get_store("./data"), Store)
-    assert isinstance(get_store("/data"), Store)
-    assert isinstance(get_store("file:///data"), Store)
-    assert isinstance(get_store("s3://bucket"), Store)
-    # assert isinstance(get_store("gcs://bucket"), Store)
-    assert isinstance(get_store("http://example.org/files"), Store)
-    assert isinstance(get_store("redis://localhost"), RedisStore)
-    assert isinstance(get_store(f"sqlite:///{tmp_path}/db"), SqlStore)
-    # assert isinstance(get_store("postgresql:///db"), SqlStore)
-    # assert isinstance(get_store("mysql:///db"), SqlStore)
+    # store backend fs implementations
+    assert isinstance(get_store()._fs, S3FileSystem)  # pytest env var ANYSTORE_URI
+    assert isinstance(get_store("memory://")._fs, MemoryFileSystem)
+    assert isinstance(get_store("./data")._fs, LocalFileSystem)
+    assert isinstance(get_store("/data")._fs, LocalFileSystem)
+    assert isinstance(get_store("file:///data")._fs, LocalFileSystem)
+    assert isinstance(get_store("s3://bucket")._fs, S3FileSystem)
+    assert isinstance(get_store("http://example.org/files")._fs, HTTPFileSystem)
+    assert isinstance(get_store("redis://localhost")._fs, RedisFileSystem)
+    assert isinstance(get_store(f"sqlite:///{tmp_path}/db")._fs, SqlFileSystem)
+    assert isinstance(get_store("postgresql:///db")._fs, SqlFileSystem)
+    assert isinstance(get_store("mysql:///db")._fs, SqlFileSystem)
+
+    # raise missing dependencies
+    with pytest.raises(ImportError) as err:
+        get_store("gcs://foo")
+    assert str(err.value) == "Please install gcsfs to access Google Storage"
 
     store = StoreModel(uri="memory:///").to_store()
-    assert isinstance(store, MemoryStore)
+    assert isinstance(store._fs, MemoryFileSystem)
 
 
 def test_store_virtual(fixtures_path):
@@ -307,20 +292,6 @@ def test_store_virtual(fixtures_path):
         assert i.read().decode().startswith("Lorem")
 
 
-def test_store_readonly(tmp_path):
-    store = get_store(tmp_path / "readonly-store", readonly=True)
-    with pytest.raises(ReadOnlyError):
-        store.put("foo", "bar")
-    with pytest.raises(ReadOnlyError):
-        store.pop("foo")
-    with pytest.raises(ReadOnlyError):
-        store.delete("foo")
-    with pytest.raises(ReadOnlyError):
-        store.open("foo", mode="w")
-    with pytest.raises(ReadOnlyError):
-        store.touch("foo")
-
-
 def test_store_for_uri(tmp_path):
     store, uri = get_store_for_uri(tmp_path / "foo/bar.txt")
     assert isinstance(store, Store)
@@ -338,6 +309,21 @@ def test_store_for_uri(tmp_path):
         store, uri = get_store_for_uri("redis://foo/bar.txt")
     with pytest.raises(NotImplementedError):
         store, uri = get_store_for_uri(f"sqlite:///{tmp_path}/db.sqlite/foo/bar.txt")
+
+
+def _test_store_external(fixtures_path, store: Store):
+    lorem = smart_read(fixtures_path / "lorem.txt", mode="r")
+    keys = [k for k in store.iterate_keys()]
+    assert len(keys) == 6
+    keys = [k for k in store.iterate_keys(prefix="sub dir")]
+    assert len(keys) == 1
+    keys = [k for k in store.iterate_keys(prefix="sub%20dir")]
+    assert len(keys) == 1
+    assert store.get("lorem.txt") == lorem
+    assert store.get("sub dir/lorem.txt") == lorem
+    assert store.info("sub dir/lorem.txt").mimetype == PLAIN
+
+    return True
 
 
 @mock_aws

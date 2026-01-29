@@ -5,63 +5,46 @@ The store class provides the top-level interface regardless for the storage
 backend.
 """
 
-from datetime import datetime
-from functools import wraps
+from datetime import datetime, timezone
+from functools import cached_property
 from pathlib import Path
 from typing import (
     IO,
     Any,
     Callable,
-    Concatenate,
     ContextManager,
     Generator,
     Generic,
     Literal,
-    ParamSpec,
-    TypeVar,
     overload,
 )
-from urllib.parse import unquote
 
-from anystore.exceptions import DoesNotExist, ReadOnlyError
+import fsspec
+
+from anystore.core.keys import Keys
+from anystore.exceptions import DoesNotExist
 from anystore.io import DEFAULT_MODE
 from anystore.logging import get_logger
-from anystore.model import Stats, StoreModel
+from anystore.model import Info, Stats, StoreModel
 from anystore.serialize import Mode, from_store, to_store
 from anystore.settings import Settings
-from anystore.store.abstract import AbstractBackend
 from anystore.types import Model, Raise, Uri, V
-from anystore.util import (
-    DEFAULT_HASH_ALGORITHM,
-    clean_dict,
-    make_checksum,
-    path_from_uri,
-)
-
-P = ParamSpec("P")
-R = TypeVar("R")
-
+from anystore.util import DEFAULT_HASH_ALGORITHM, clean_dict, make_checksum
 
 settings = Settings()
 
 log = get_logger(__name__)
 
 
-def check_readonly(
-    func: Callable[Concatenate["BaseStore", P], R],
-) -> Callable[Concatenate["BaseStore", P], R]:
-    """Guard for read-only store. Write functions should be decorated with it"""
+class Store(StoreModel, Generic[V, Raise]):
+    @cached_property
+    def _fs(self) -> fsspec.AbstractFileSystem:
+        return fsspec.url_to_fs(self.uri, **self.ensure_kwargs())[0]
 
-    @wraps(func)
-    def _check(self: "BaseStore", *args: P.args, **kwargs: P.kwargs) -> R:
-        if self.readonly:
-            raise ReadOnlyError(f"Store `{self.uri}` is configured readonly!")
-        return func(self, *args, **kwargs)
+    @cached_property
+    def _keys(self) -> Keys:
+        return Keys(self.uri)
 
-    return _check
-
-
-class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
     # Explicit raise_on_nonexist=True always returns V
     @overload
     def get(
@@ -91,7 +74,7 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
     # Store configured with raise_on_nonexist=True, param is None -> returns V
     @overload
     def get(
-        self: "BaseStore[V, Literal[True]]",
+        self: "Store[V, Literal[True]]",
         key: Uri,
         raise_on_nonexist: None = None,
         serialization_mode: Mode | None = None,
@@ -146,10 +129,12 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
         if raise_on_nonexist is None:
             raise_on_nonexist = self.raise_on_nonexist
         kwargs = self.ensure_kwargs(**kwargs)
-        key = self.get_key(key)
+        kwargs.pop("mode", None)
+        key = self._keys.to_fs_key(key)
+        self._check_ttl(key, raise_on_nonexist)
         try:
             return from_store(
-                self._read(key, raise_on_nonexist, **kwargs),
+                self._fs.cat_file(key, **kwargs),
                 serialization_mode,
                 deserialization_func=deserialization_func,
                 model=model,
@@ -188,7 +173,7 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
     # Store configured with raise_on_nonexist=True, param is None -> returns V
     @overload
     def pop(
-        self: "BaseStore[V, Literal[True]]",
+        self: "Store[V, Literal[True]]",
         key: Uri,
         raise_on_nonexist: None = None,
         serialization_mode: Mode | None = None,
@@ -211,7 +196,6 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
     ) -> V | None:
         pass
 
-    @check_readonly
     def pop(
         self,
         key: Uri,
@@ -247,10 +231,9 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
             model=model,
             **kwargs,
         )
-        self._delete(self.get_key(key))
+        self.delete(key)
         return value
 
-    @check_readonly
     def delete(self, key: Uri, ignore_errors: bool = False) -> None:
         """
         Delete the content at the given key.
@@ -259,8 +242,9 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
             key: Key relative to store base uri
             ignore_errors: Ignore exceptions if deletion fails
         """
+        key = self._keys.to_fs_key(key)
         try:
-            self._delete(self.get_key(key))
+            self._fs.rm_file(key)
         except Exception as e:
             if not ignore_errors:
                 raise e
@@ -294,7 +278,7 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
     # Store configured with raise_on_nonexist=True, param is None -> returns Generator
     @overload
     def stream(
-        self: "BaseStore[V, Literal[True]]",
+        self: "Store[V, Literal[True]]",
         key: Uri,
         raise_on_nonexist: None = None,
         serialization_mode: Mode | None = None,
@@ -347,22 +331,22 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
             anystore.exceptions.DoesNotExists: If key doesn't exist and
                 raise_on_nonexist=True
         """
-        key = self.get_key(key)
         model = model or self.model
         extra_kwargs = {
             "serialization_mode": serialization_mode or self.serialization_mode,
             "deserialization_func": deserialization_func or self.deserialization_func,
             "model": model,
         }
+        key = self._keys.to_fs_key(key)
         try:
-            for line in self._stream(key, **kwargs):
-                yield from_store(line, **extra_kwargs)
-        except (FileNotFoundError, DoesNotExist):
+            with self._fs.open(key) as i:
+                while line := i.readline():
+                    yield from_store(line, **extra_kwargs)
+        except FileNotFoundError:
             if raise_on_nonexist:
                 raise DoesNotExist(f"Key does not exist: `{key}`")
             return None
 
-    @check_readonly
     def put(
         self,
         key: Uri,
@@ -394,22 +378,45 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
         serialization_func = serialization_func or self.serialization_func
         model = model or self.model
         kwargs = self.ensure_kwargs(**kwargs)
-        key = self.get_key(key)
         ttl = ttl or self.default_ttl or None
-        self._write(
-            key,
-            to_store(
-                value,
-                serialization_mode,
-                serialization_func=serialization_func,
-                model=model,
-            ),
-            ttl=ttl,
-        )
+        key = self._keys.to_fs_key(key)
+        self.ensure_parent(key)
+        with self._fs.open(key, "wb", ttl=ttl) as o:
+            o.write(
+                to_store(
+                    value,
+                    serialization_mode,
+                    serialization_func=serialization_func,
+                    model=model,
+                )
+            )
+
+    def _check_ttl(self, fs_key: str, raise_on_nonexist: bool | None = True) -> bool:
+        """Check if key is expired by TTL; delete and return False if so."""
+        if not self.default_ttl:
+            return True
+        try:
+            info = Info(**self._fs.info(fs_key))
+            if info.created_at is None:
+                return True
+            now = datetime.now(timezone.utc)
+            if (now - info.created_at).total_seconds() > self.default_ttl:
+                self._fs.rm_file(fs_key)
+                return False
+            return True
+        except FileNotFoundError:  # fsspec
+            if raise_on_nonexist:
+                raise DoesNotExist(
+                    f"Key does not exist: `{self._keys.to_fs_key(fs_key)}`"
+                )
+            return False
 
     def exists(self, key: Uri) -> bool:
         """Check if the given `key` exists"""
-        return self._exists(self.get_key(key))
+        key = self._keys.to_fs_key(key)
+        if not self._check_ttl(key, raise_on_nonexist=False):
+            return False
+        return self._fs.exists(key)
 
     def info(self, key: Uri) -> Stats:
         """
@@ -418,32 +425,20 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
         Returns:
             Key metadata
         """
-        try:
-            stats = self._info(self.get_key(key))
-            stats = stats.model_dump()
-        except Exception as e:
-            log.warn(
-                f"Cannot get info: `{e.__class__.__name__}`: {e}",
-                key=key,
-                store=self.uri,
-            )
-            stats = {"size": 0}
-        key = str(key)
+        fs_key = self._keys.to_fs_key(key)
+        info = self._fs.info(fs_key)
         return Stats(
-            **stats,
-            name=Path(key).name,
-            store=str(self.uri),
-            key=key,
+            **{
+                **info,
+                "name": Path(key).name,
+                "store": str(self.uri),
+                "key": str(key),
+            }
         )
 
     def ensure_kwargs(self, **kwargs) -> dict[str, Any]:
         config = clean_dict(self.backend_config)
         return {**config, **clean_dict(kwargs)}
-
-    def get_key(self, key: Uri) -> str:
-        key = str(key)
-        key = f"{self._get_key_prefix()}/{key}".strip("/")
-        return unquote(key)
 
     def iterate_keys(
         self,
@@ -470,8 +465,23 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
         Returns:
             The matching keys as a generator of strings
         """
-        for key in self._iterate_keys(prefix, exclude_prefix, glob):
-            yield unquote(key)
+        if prefix:
+            base = self._keys.to_fs_key(prefix)
+        else:
+            base = self._keys.key_prefix
+        if glob:
+            glob = self._keys.to_fs_key(glob)
+            keys = self._fs.glob(glob)
+        else:
+            try:
+                keys = self._fs.find(base)
+            except FileNotFoundError:
+                return
+        for key in keys:
+            rel = self._keys.from_fs_key(key)
+            if exclude_prefix and rel.startswith(exclude_prefix):
+                continue
+            yield rel
 
     def iterate_values(
         self,
@@ -505,7 +515,7 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
         Returns:
             The matching values as a generator of any (serialized) type
         """
-        for key in self._iterate_keys(prefix, exclude_prefix, glob):
+        for key in self.iterate_keys(prefix, exclude_prefix, glob):
             value = self.get(
                 key,
                 serialization_mode=serialization_mode,
@@ -531,8 +541,8 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
         """
         kwargs = self.ensure_kwargs(**kwargs)
         kwargs["mode"] = "rb"
-        key = self.get_key(key)
-        with self._open(key, **kwargs) as io:
+        key = self._keys.to_fs_key(key)
+        with self._fs.open(key, **kwargs) as io:
             return make_checksum(io, algorithm or DEFAULT_HASH_ALGORITHM)
 
     def open(
@@ -559,13 +569,10 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
             The open handler
         """
         mode = mode or DEFAULT_MODE
-        if self.readonly and ("w" in mode or "a" in mode):
-            raise ReadOnlyError(f"Store `{self.uri}` is configured readonly!")
         kwargs = self.ensure_kwargs(**kwargs)
-        key = self.get_key(key)
-        return self._open(key, mode=mode, **kwargs)
+        key = self._keys.to_fs_key(key)
+        return self._fs.open(key, mode=mode, **kwargs)
 
-    @check_readonly
     def touch(self, key: Uri, **kwargs: Any) -> datetime:
         """
         Store the current timestamp at the given key
@@ -577,7 +584,7 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
         Returns:
             The timestamp
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         self.put(key, now, **kwargs)
         return now
 
@@ -585,5 +592,5 @@ class BaseStore(StoreModel, AbstractBackend, Generic[V, Raise]):
         """Ensure existence of parent path. This mostly only is relevant for
         stores on local filesystem"""
         if self.is_local:
-            parent = path_from_uri(self.get_key(key)).parent
-            parent.mkdir(exist_ok=True, parents=True)
+            parent = Path(key).parent
+            self._fs.mkdirs(parent, exist_ok=True)
