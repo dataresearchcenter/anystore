@@ -75,6 +75,9 @@ class Keys:
     def from_fs_key(self, key: Uri) -> str:
         """Convert a fs key to relative key"""
         key = validate_key(key)
+        # MemoryFileSystem.find() may return keys with a leading slash
+        if isinstance(self.fs, MemoryFileSystem):
+            key = key.lstrip("/")
         if key.startswith(self.key_prefix):
             return key[len(self.key_prefix) :].strip("/")
         raise ValueError(f"Invalid key `{key}`, doesn't has base `{self.key_prefix}`")

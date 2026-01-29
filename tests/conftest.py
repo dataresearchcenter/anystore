@@ -6,6 +6,7 @@ from pathlib import Path
 import boto3
 import pytest
 import requests
+from fsspec.implementations.memory import MemoryFileSystem
 from moto.server import ThreadedMotoServer
 
 FIXTURES_PATH = (Path(__file__).parent / "fixtures").absolute()
@@ -49,6 +50,13 @@ def moto_server():
     host, port = server.get_host_and_port()
     yield f"http://{host}:{port}"
     server.stop()
+
+
+@pytest.fixture(autouse=True)
+def _clear_memory_fs():
+    """Reset the fsspec MemoryFileSystem between tests."""
+    yield
+    MemoryFileSystem.store.clear()
 
 
 def setup_s3():
