@@ -191,6 +191,12 @@ def _test_store(fixtures_path, uri: str) -> bool:
     store.put("nothing", 1)
     assert store.exists("nothing")
 
+    # handling of CURRENT (".")
+    store.put("special/current/.", "test")
+    assert store.get("special/current") == "test"
+    assert store.get("special/current/") == "test"
+    assert store.get("special/current/.") == "test"
+
     return True
 
 

@@ -49,8 +49,10 @@ def test_util_uris():
     assert util.join_uri("redis://foo/bar.pdf", "../baz.txt") == "redis://foo/baz.txt"
     assert util.join_uri("memory://", "bar") == "memory:///bar"
     assert util.join_uri("memory://foo/bar.pdf", "../baz.txt") == "memory://foo/baz.txt"
+    assert util.join_uri("/tmp/bar", ".") == "file:///tmp/bar"
 
     assert util.join_relpaths("/a/b/c/", "d/e") == "a/b/c/d/e"
+    assert util.join_relpaths("/a/b/c/", ".") == "a/b/c"
 
     assert util.path_from_uri("/foo/bar") == PosixPath("/foo/bar")
     assert util.path_from_uri("file:///foo/bar") == PosixPath("/foo/bar")

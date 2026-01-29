@@ -3,7 +3,6 @@
 """
 
 from typing import Any
-from urllib.parse import urlparse
 
 from anystore.logging import get_logger
 from anystore.settings import Settings
@@ -54,15 +53,3 @@ def get_store(
     # test if backend fs is available, raises ImportError if not
     _ = store._fs
     return store
-
-
-def get_store_for_uri(uri: Uri, **kwargs) -> tuple[Store, str]:
-    uri = ensure_uri(uri)
-    parsed = urlparse(uri)
-    if parsed.scheme in ("redis", "memory") or "sql" in parsed.scheme:
-        raise NotImplementedError(f"Cannot parse `{uri}` with scheme `{parsed.scheme}`")
-    base_uri, path = uri.rsplit("/", 1)
-    return get_store(base_uri, **kwargs), path
-
-
-__all__ = ["get_store", "get_store_for_uri", "Store"]

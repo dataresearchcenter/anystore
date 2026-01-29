@@ -12,6 +12,7 @@ from anystore.fs.redis import RedisFileSystem
 from anystore.fs.sql import SqlFileSystem
 from anystore.logic.uri import UriHandler
 from anystore.types import Uri
+from anystore.util import CURRENT
 
 
 def validate_key(key: Uri | None = None) -> str:
@@ -31,7 +32,8 @@ def validate_relative_key(key: Uri | None = None) -> str:
     uri = urlparse(key)
     if uri.scheme:
         raise ValueError(f"Invalid absolute key: `{key}`")
-    return unquote(key).rstrip("/")
+    key = unquote(key).rstrip("/")
+    return "/".join(p for p in key.split("/") if p != CURRENT)
 
 
 class Keys:
@@ -65,7 +67,9 @@ class Keys:
         """Convert a relative key to the backend fs key"""
         key = validate_relative_key(key)
         if self.key_prefix:
-            return f"{self.key_prefix}/{key}"
+            if key:
+                return f"{self.key_prefix}/{key}"
+            return self.key_prefix
         return key
 
     def from_fs_key(self, key: Uri) -> str:

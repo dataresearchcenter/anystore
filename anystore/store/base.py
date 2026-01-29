@@ -427,10 +427,11 @@ class Store(StoreModel, Generic[V, Raise]):
         """
         fs_key = self._keys.to_fs_key(key)
         info = self._fs.info(fs_key)
+        name = Path(info.get("name", key)).name
         return Stats(
             **{
                 **info,
-                "name": Path(key).name,
+                "name": name,
                 "store": str(self.uri),
                 "key": str(key),
             }

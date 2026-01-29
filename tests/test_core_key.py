@@ -72,6 +72,10 @@ def test_core_key_handler():
         assert keys.from_fs_key(keys.to_fs_key("bar")) == "bar"
         assert keys.key_prefix == ""
 
+    # CURRENT "."
+    assert Keys("https://example.org").to_fs_key(".") == "https://example.org"
+    assert Keys("/tmp/foo/bar").to_fs_key(".") == "/tmp/foo/bar"
+
 
 def test_core_key_invalid():
     keys = Keys("foo")

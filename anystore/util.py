@@ -26,6 +26,8 @@ SCHEME_S3 = "s3"
 SCHEME_REDIS = "redis"
 SCHEME_MEMORY = "memory"
 
+CURRENT = "."
+
 
 def _clean(val: Any) -> Any:
     if val is False:
@@ -176,6 +178,8 @@ def join_uri(uri: Any, path: str) -> str:
     uri = ensure_uri(uri)
     if not uri or uri == "-":
         raise ValueError(f"Invalid uri: `{uri}`")
+    if path == CURRENT:
+        return uri
     parsed = urlsplit(uri)
     scheme = parsed.scheme
     # For schemes with empty netloc (e.g. memory://), use path-based joining
@@ -211,7 +215,9 @@ def join_relpaths(*parts: Uri) -> str:
     Returns:
         Joined relative path
     """
-    return "/".join((p.strip("/") for p in map(str, parts) if p)).strip("/")
+    return "/".join(
+        (p.strip("/") for p in map(str, parts) if p and p != CURRENT)
+    ).strip("/")
 
 
 def uri_to_path(uri: Uri) -> Path:
