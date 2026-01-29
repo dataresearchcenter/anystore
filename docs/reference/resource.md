@@ -1,0 +1,1 @@
+::: anystore.core.resource

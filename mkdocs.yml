@@ -12,16 +12,24 @@ nav:
     - configuration.md
     - serialization.md
   - Reference:
+    - Core:
       - anystore.io: reference/io.md
+      - anystore.cli: reference/cli.md
+      - anystore.core.resource: reference/resource.md
+    - Store:
       - anystore.store: reference/store.md
       - anystore.store.virtual: reference/virtual.md
+    - Interfaces:
       - anystore.interface.tags: reference/tags.md
+      - anystore.interface.lock: reference/lock.md
+      - anystore.interface.queue: reference/queue.md
+    - Model:
       - anystore.model: reference/model.md
-      - anystore.cli: reference/cli.md
+    - Serialization:
       - anystore.logic.serialize: reference/serialize.md
+    - Misc:
       - anystore.decorators: reference/decorators.md
       - anystore.settings: reference/settings.md
-      - anystore.interface.lock: reference/lock.md
       - anystore.util: reference/util.md
 theme:
   name: material
