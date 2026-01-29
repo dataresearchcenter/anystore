@@ -81,7 +81,7 @@ class ApiFileSystem(HTTPFileSystem):
         if path:
             params["prefix"] = path
         session = await self.set_session()
-        async with session.get(base + "/", params=params, **self.kwargs) as resp:
+        async with session.post(base + "/_list", params=params, **self.kwargs) as resp:
             resp.raise_for_status()
             text = await resp.text()
             keys = [k for k in text.splitlines() if k]

@@ -15,7 +15,7 @@ def get_store(request: Request) -> Store:
 router = APIRouter()
 
 
-@router.get("/")
+@router.post("/_list")
 def iterate_keys(
     prefix: str | None = None,
     exclude_prefix: str | None = None,
