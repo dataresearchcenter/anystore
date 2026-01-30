@@ -2,15 +2,19 @@
 # Top-level store entrypoint
 """
 
+import threading
 from typing import Any
 
 from anystore.logging import get_logger
 from anystore.settings import Settings
 from anystore.store.base import Store
 from anystore.types import Uri
-from anystore.util import ensure_uri
+from anystore.util import ensure_uri, make_data_checksum
 
 log = get_logger(__name__)
+
+_store_cache: dict[str, Store] = {}
+_store_lock = threading.Lock()
 
 
 def get_store(
@@ -49,7 +53,17 @@ def get_store(
             return Store.from_json_uri(settings.json_uri, **kwargs)
         uri = settings.uri
     uri = ensure_uri(uri)
+
+    # Cache per (uri, thread) to avoid re-creating stores
+    cache_key = make_data_checksum((str(uri), kwargs, threading.get_ident()))
+    with _store_lock:
+        if cache_key in _store_cache:
+            return _store_cache[cache_key]
+
     store = Store(uri=uri, **kwargs)
     # test if backend fs is available, raises ImportError if not
     _ = store._fs
+
+    with _store_lock:
+        _store_cache[cache_key] = store
     return store
