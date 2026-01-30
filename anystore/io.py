@@ -33,6 +33,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AnyStr,
+    ContextManager,
     Generator,
     Iterable,
     Literal,
@@ -40,6 +41,10 @@ from typing import (
     Type,
     TypeVar,
 )
+
+from anystore.core.resource import UriResource
+from anystore.store.virtual import VirtualIO
+from anystore.types import Uri as TUri
 
 if TYPE_CHECKING:
     from anystore.store import Store
@@ -489,3 +494,8 @@ def logged_items(
             yield item
     if ix:
         log_.info(f"{action} {ix} `{item_name}s`: Done.", **log_kwargs)
+
+
+def open_virtual(uri: TUri, **kwargs) -> ContextManager[VirtualIO]:
+    """Wrapper for [UriResource.local_open][UriResource.local_open]"""
+    return UriResource(uri, **kwargs).local_open()

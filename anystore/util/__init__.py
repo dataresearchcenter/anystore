@@ -1,4 +1,4 @@
-from anystore.logic.uri import (  # noqa: F401
+from anystore.logic.uri import (
     CURRENT,
     ensure_uri,
     join_relpaths,
@@ -7,16 +7,15 @@ from anystore.logic.uri import (  # noqa: F401
     path_from_uri,
     uri_to_path,
 )
-from anystore.util.checksum import (  # noqa: F401
+from anystore.util.checksum import (
     DEFAULT_HASH_ALGORITHM,
     make_checksum,
     make_data_checksum,
     make_signature_key,
     make_uri_key,
 )
-from anystore.util.data import (  # noqa: F401
+from anystore.util.data import (
     BM,
-    _clean,
     clean_dict,
     dict_merge,
     dump_json,
@@ -27,7 +26,7 @@ from anystore.util.data import (  # noqa: F401
     model_dump,
     pydantic_merge,
 )
-from anystore.util.misc import (  # noqa: F401
+from anystore.util.misc import (
     SCHEME_FILE,
     SCHEME_MEMORY,
     SCHEME_REDIS,
@@ -57,7 +56,6 @@ __all__ = [
     "make_uri_key",
     # data
     "BM",
-    "_clean",
     "clean_dict",
     "dict_merge",
     "dump_json",

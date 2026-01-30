@@ -9,6 +9,7 @@ from anystore.exceptions import DoesNotExist
 from anystore.types import Uri as _Uri
 
 CHUNK_SIZE = 5 * 1024 * 1024  # 5 MB
+CHUNK_SIZE_LARGE = CHUNK_SIZE * 10  # 50 MB
 DEFAULT_MODE = "rb"
 DEFAULT_WRITE_MODE = "wb"
 

@@ -8,6 +8,7 @@ from anystore.exceptions import DoesNotExist
 from anystore.io import smart_read
 from anystore.logic.uri import CURRENT
 from anystore.model import Stats
+from anystore.store.virtual import VirtualIO
 
 FIXTURES_PATH = (Path(__file__).parent / "fixtures").absolute()
 
@@ -136,3 +137,40 @@ def test_core_resource_current():
     r = UriResource("http://localhost:8000")
     assert r.key == CURRENT
     assert r.get().startswith("<!DOCTYPE")
+
+
+def test_core_resource_local_path(fixtures_path):
+    # remote
+    r = UriResource("http://localhost:8000/lorem.txt")
+    with r.local_path() as p:
+        assert p.exists()
+        assert p.read_text() == r.get()
+    assert not p.exists()
+
+    # local
+    r = UriResource(fixtures_path / "lorem.txt")
+    with r.local_path() as p:
+        assert p.exists()
+        assert p.read_text() == r.get()
+    # still exists
+    assert p.exists()
+
+
+def test_core_resource_local_open(fixtures_path):
+    # remote
+    r = UriResource("http://localhost:8000/lorem.txt")
+    with r.local_open() as fh:
+        assert isinstance(fh, VirtualIO)
+        assert fh.path.exists()
+        assert len(fh.checksum) == 40
+        assert fh.read() == r.get(serialization_mode="raw")
+    assert not fh.path.exists()
+
+    # local
+    r = UriResource(fixtures_path / "lorem.txt")
+    with r.local_open() as fh:
+        assert isinstance(fh, VirtualIO)
+        assert fh.path.exists()
+        assert len(fh.checksum) == 40
+        assert fh.read() == r.get(serialization_mode="raw")
+    assert fh.path.exists()

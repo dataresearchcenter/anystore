@@ -20,7 +20,6 @@ from anystore.fs.sql import SqlFileSystem
 from anystore.io import smart_read
 from anystore.model import StoreModel
 from anystore.store import Store, get_store
-from anystore.store.virtual import get_virtual, open_virtual
 from anystore.util import DEFAULT_HASH_ALGORITHM, ensure_uri, join_uri, uri_to_path
 from tests.conftest import setup_s3
 
@@ -299,31 +298,6 @@ def test_store_initialize(tmp_path, fixtures_path):
 
     store = StoreModel(uri="memory:///").to_store()
     assert isinstance(store._fs, MemoryFileSystem)
-
-
-def test_store_virtual(fixtures_path):
-    tmp = get_virtual()
-    key = tmp.download(fixtures_path / "lorem.txt")
-    assert key == ensure_uri(fixtures_path / "lorem.txt")
-
-    store = get_store(uri=fixtures_path)
-    key = tmp.download("lorem.txt", store)
-    assert key == ensure_uri(fixtures_path / "lorem.txt")
-
-    path = uri_to_path(key)
-    assert path.exists()
-    tmp.cleanup()
-    # still exists because local
-    assert path.exists()
-
-    with get_virtual() as tmp:
-        tmp.download(fixtures_path / "lorem.txt")
-        path = tmp.path
-        assert os.path.exists(tmp.path)
-    assert not os.path.exists(path)
-
-    with open_virtual(fixtures_path / "lorem.txt") as i:
-        assert i.read().decode().startswith("Lorem")
 
 
 def _test_store_external(fixtures_path, store: Store):

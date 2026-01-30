@@ -23,9 +23,8 @@ import fsspec
 
 from anystore.core.keys import Keys
 from anystore.exceptions import DoesNotExist
-from anystore.io import DEFAULT_MODE
 from anystore.logging import get_logger
-from anystore.logic.io import iter_lines
+from anystore.logic.io import DEFAULT_MODE, iter_lines
 from anystore.logic.serialize import Mode, from_store, to_store
 from anystore.model import Info, Stats, StoreModel
 from anystore.settings import Settings

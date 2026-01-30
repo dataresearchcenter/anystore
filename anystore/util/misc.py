@@ -4,12 +4,13 @@ import shutil
 from datetime import datetime, timedelta
 from io import BytesIO, StringIO
 from os.path import splitext
-from pathlib import Path
 from typing import Self
 
 from rigour.mime import normalize_mimetype
 from uuid_extensions import uuid7
 
+from anystore.logging import get_logger
+from anystore.logic.uri import uri_to_path
 from anystore.types import Uri
 
 SCHEME_FILE = "file"
@@ -17,19 +18,21 @@ SCHEME_S3 = "s3"
 SCHEME_REDIS = "redis"
 SCHEME_MEMORY = "memory"
 
+log = get_logger(__name__)
+
 
 def rm_rf(uri: Uri) -> None:
     """
     like `rm -rf`, ignoring errors.
     """
     try:
-        p = Path(uri)
+        p = uri_to_path(uri)
         if p.is_dir():
             shutil.rmtree(str(p), ignore_errors=True)
         else:
             p.unlink()
-    except Exception:
-        pass
+    except Exception as e:
+        log.warn(f"Couldn't delete file or folder: `{e}`", uri=uri)
 
 
 def get_extension(uri: Uri) -> str | None:
