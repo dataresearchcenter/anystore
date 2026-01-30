@@ -67,3 +67,6 @@ def get_store(
     with _store_lock:
         _store_cache[cache_key] = store
     return store
+
+
+__all__ = ["get_store", "Store"]
