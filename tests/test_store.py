@@ -18,9 +18,10 @@ from anystore.fs.api import ApiFileSystem
 from anystore.fs.redis import RedisFileSystem
 from anystore.fs.sql import SqlFileSystem
 from anystore.io import smart_read
+from anystore.logic.uri import ensure_uri, join_uri, uri_to_path
 from anystore.model import StoreModel
 from anystore.store import Store, get_store
-from anystore.util import DEFAULT_HASH_ALGORITHM, ensure_uri, join_uri, uri_to_path
+from anystore.util.checksum import DEFAULT_HASH_ALGORITHM
 from tests.conftest import setup_s3
 
 

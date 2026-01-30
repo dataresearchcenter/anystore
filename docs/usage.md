@@ -111,10 +111,10 @@ metadata = store.info("key")
 
 ## URI resources
 
-A [`UriResource`][anystore.core.resource.UriResource] wraps a single URI and exposes the same store interface with the key pre-bound. This is useful when working with a known file location rather than a store + key pair:
+A [`UriResource`][anystore.store.resource.UriResource] wraps a single URI and exposes the same store interface with the key pre-bound. This is useful when working with a known file location rather than a store + key pair:
 
 ```python
-from anystore.core.resource import UriResource
+from anystore.store.resource import UriResource
 
 resource = UriResource("s3://mybucket/data/report.json")
 

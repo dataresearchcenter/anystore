@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 
 from anystore.api.routes import router
 from anystore.exceptions import DoesNotExist
-from anystore.store.base import Store
+from anystore.store import Store, get_store
 
 
 async def _not_found_handler(_request: Request, exc: Exception) -> JSONResponse:
@@ -16,8 +16,6 @@ def create_app(store: Store | None = None) -> FastAPI:
     app = FastAPI(docs_url=None, redoc_url="/")
 
     if store is None:
-        from anystore.store import get_store
-
         store = get_store()
 
     app.state.store = store

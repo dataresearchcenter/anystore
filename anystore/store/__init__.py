@@ -6,10 +6,11 @@ import threading
 from typing import Any
 
 from anystore.logging import get_logger
+from anystore.logic.uri import ensure_uri
 from anystore.settings import Settings
 from anystore.store.base import Store
 from anystore.types import Uri
-from anystore.util import ensure_uri, make_data_checksum
+from anystore.util.checksum import make_data_checksum
 
 log = get_logger(__name__)
 

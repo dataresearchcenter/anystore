@@ -5,10 +5,8 @@ from typing import Any
 from urllib.parse import ParseResult, unquote, urlparse
 
 import fsspec
-from fsspec.implementations.http import HTTPFileSystem
-from fsspec.implementations.local import LocalFileSystem
-from fsspec.implementations.memory import MemoryFileSystem
 
+from anystore.logic.constants import SCHEME_FILE, SCHEME_MEMORY, SCHEME_REDIS, SCHEME_S3
 from anystore.types import Uri
 
 CURRENT = "."
@@ -89,31 +87,27 @@ class UriHandler:
 
     @cached_property
     def is_local(self) -> bool:
-        return isinstance(self._fs, LocalFileSystem)
+        return self.scheme == SCHEME_FILE
 
     @cached_property
     def is_http(self) -> bool:
-        return isinstance(self._fs, HTTPFileSystem)
+        return "http" in self.scheme
 
     @cached_property
     def is_s3(self) -> bool:
-        return self.scheme == "s3"
+        return self.scheme == SCHEME_S3
 
     @cached_property
     def is_memory(self) -> bool:
-        return isinstance(self._fs, MemoryFileSystem)
+        return self.scheme == SCHEME_MEMORY
 
     @cached_property
     def is_redis(self) -> bool:
-        from anystore.fs.redis import RedisFileSystem
-
-        return isinstance(self._fs, RedisFileSystem)
+        return self.scheme == SCHEME_REDIS
 
     @cached_property
     def is_sql(self) -> bool:
-        from anystore.fs.sql import SqlFileSystem
-
-        return isinstance(self._fs, SqlFileSystem)
+        return "sql" in self.scheme
 
 
 def join_uri(uri: Any, path: str) -> str:

@@ -4,9 +4,9 @@ from fsspec.implementations.local import LocalFileSystem
 from fsspec.implementations.memory import MemoryFileSystem
 from s3fs.core import S3FileSystem
 
-from anystore.core.keys import Keys
 from anystore.fs.redis import RedisFileSystem
 from anystore.fs.sql import SqlFileSystem
+from anystore.store.keys import Keys
 
 
 def test_core_key_handler():

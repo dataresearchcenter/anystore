@@ -13,11 +13,6 @@ from anystore.logging import get_logger
 from anystore.logic.uri import uri_to_path
 from anystore.types import Uri
 
-SCHEME_FILE = "file"
-SCHEME_S3 = "s3"
-SCHEME_REDIS = "redis"
-SCHEME_MEMORY = "memory"
-
 log = get_logger(__name__)
 
 

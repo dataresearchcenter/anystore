@@ -3,12 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from anystore.core.resource import UriResource
 from anystore.exceptions import DoesNotExist
 from anystore.io import smart_read
 from anystore.logic.uri import CURRENT
+from anystore.logic.virtual import VirtualIO
 from anystore.model import Stats
-from anystore.store.virtual import VirtualIO
+from anystore.store.resource import UriResource
 
 FIXTURES_PATH = (Path(__file__).parent / "fixtures").absolute()
 

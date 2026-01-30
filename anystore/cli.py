@@ -6,13 +6,9 @@ from rich.console import Console
 from structlog import BoundLogger
 
 from anystore import __version__
-from anystore.io import (
-    Writer,
-    smart_open,
-    smart_read,
-    smart_stream_csv,
-    smart_write,
-)
+from anystore.io.handler import smart_open
+from anystore.io.read import smart_read, smart_stream_csv
+from anystore.io.write import Writer, smart_write
 from anystore.logging import configure_logging
 from anystore.logic.io import stream
 from anystore.settings import Settings

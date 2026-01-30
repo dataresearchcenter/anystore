@@ -5,6 +5,7 @@ The store class provides the top-level interface regardless for the storage
 backend.
 """
 
+import contextlib
 from datetime import datetime, timezone
 from functools import cached_property
 from pathlib import Path
@@ -21,18 +22,21 @@ from typing import (
 
 import fsspec
 
-from anystore.core.keys import Keys
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
-from anystore.logic.io import DEFAULT_MODE, iter_lines
+from anystore.logic.constants import DEFAULT_MODE
+from anystore.logic.io import iter_lines, stream_bytes
 from anystore.logic.serialize import Mode, from_store, to_store
+from anystore.logic.uri import uri_to_path
+from anystore.logic.virtual import VirtualIO
 from anystore.model import Info, Stats, StoreModel
 from anystore.settings import Settings
+from anystore.store.keys import Keys
 from anystore.types import Model, Raise, Uri, V
-from anystore.util import DEFAULT_HASH_ALGORITHM, clean_dict, make_checksum
+from anystore.util.checksum import DEFAULT_HASH_ALGORITHM, make_checksum
+from anystore.util.data import clean_dict
 
 settings = Settings()
-
 log = get_logger(__name__)
 
 
@@ -597,3 +601,64 @@ class Store(StoreModel, Generic[V, Raise]):
         if self.is_local:
             parent = Path(fs_key).parent
             self._fs.mkdirs(parent, exist_ok=True)
+
+    @contextlib.contextmanager
+    def local_path(self, key: Uri) -> Generator[Path, None, None]:
+        """
+        Download the resource at `key` for temporary local processing and get
+        its local path. If the file itself is already on the local filesystem,
+        the actual file will be used. The file is cleaned up when leaving the
+        context, unless it was a local file, it won't be deleted in any case.
+
+        Example:
+            ```python
+            store = get_store("s3://bucket")
+            with store.local_path("data.json") as path:
+                do_something(path)
+            ```
+        Yields:
+            The absolute temporary `path` as a `pathlib.Path` object
+        """
+        uri = self._keys.to_fs_key(key)
+        tmp = None
+        if self.is_local:
+            path = uri_to_path(uri)
+        else:
+            from anystore.store.virtual import get_virtual_store
+
+            tmp = get_virtual_store()
+            tmp_store = tmp.__enter__()
+            stream_bytes(str(key), self, tmp_store)
+            path = uri_to_path(tmp_store._keys.to_fs_key(key))
+        try:
+            yield path
+        finally:
+            if tmp is not None:
+                tmp.__exit__(None, None, None)
+
+    @contextlib.contextmanager
+    def local_open(self, key: Uri) -> Generator[VirtualIO, None, None]:
+        """
+        Download a file for temporary local processing and get its checksum and
+        an open handler. If the file itself is already on the local filesystem,
+        the actual file will be used. The file is cleaned up when leaving the
+        context, except if it was a local file, it won't be deleted in any case.
+
+        Example:
+            ```python
+            store = get_store("http://example.org")
+            with r.local_open("test.txt") as fh:
+                smart_write(uri=f"./local/{fh.checksum}", fh.read())
+            ```
+
+        Yields:
+            A generic file-handler like context object. It has 3 extra attributes:
+                - `checksum`
+                - the absolute temporary `path` as a `pathlib.Path` object
+                - [`info`][anystore.model.Stats] object
+        """
+        with self.local_path(key) as path:
+            with path.open("rb") as fh:
+                checksum = make_checksum(fh)
+                fh.seek(0)
+                yield VirtualIO(fh, checksum=checksum, path=path, info=self.info(key))

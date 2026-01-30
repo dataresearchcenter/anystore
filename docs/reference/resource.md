@@ -1,1 +1,1 @@
-::: anystore.core.resource
+::: anystore.store.resource

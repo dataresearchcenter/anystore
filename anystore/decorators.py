@@ -36,7 +36,7 @@ from anystore.logging import get_logger
 from anystore.logic.serialize import Mode
 from anystore.settings import Settings
 from anystore.store import Store, get_store
-from anystore.util import make_signature_key
+from anystore.util.checksum import make_signature_key
 
 log = get_logger(__name__)
 settings = Settings()

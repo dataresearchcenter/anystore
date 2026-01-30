@@ -13,7 +13,7 @@ from fsspec.spec import AbstractFileSystem
 from anystore.functools import weakref_cache as cache
 from anystore.logging import get_logger
 from anystore.settings import Settings
-from anystore.util import mask_uri
+from anystore.util.misc import mask_uri
 
 if TYPE_CHECKING:
     import fakeredis

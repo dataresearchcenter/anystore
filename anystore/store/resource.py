@@ -9,19 +9,16 @@ with the key pre-bound. Consumers use it as:
 
 from __future__ import annotations
 
-import contextlib
 from datetime import datetime
 from pathlib import Path
 from typing import IO, Any, Callable, ContextManager, Generator
 
-from anystore.logic.io import stream
 from anystore.logic.serialize import Mode
-from anystore.logic.uri import UriHandler, path_from_uri, uri_to_path
+from anystore.logic.uri import CURRENT, UriHandler
+from anystore.logic.virtual import VirtualIO
 from anystore.model import Stats
 from anystore.store.base import Store
-from anystore.store.virtual import VirtualIO, get_virtual_store
 from anystore.types import Model, Uri
-from anystore.util import CURRENT, make_checksum
 
 
 class UriResource(UriHandler):
@@ -29,7 +26,7 @@ class UriResource(UriHandler):
 
     Example:
         ```python
-        from anystore.core.resource import UriResource
+        from anystore.store.resource import UriResource
 
         r = UriResource("s3://bucket/path/file.txt")
         r.put(b"hello world")
@@ -136,8 +133,7 @@ class UriResource(UriHandler):
     def touch(self, **kwargs: Any) -> datetime:
         return self.store.touch(self.key, **kwargs)
 
-    @contextlib.contextmanager
-    def local_path(self) -> Generator[Path, None, None]:
+    def local_path(self) -> ContextManager[Path]:
         """
         Download the resource for temporary local processing and get its local
         path. If the file itself is already on the local filesystem, the actual
@@ -153,24 +149,9 @@ class UriResource(UriHandler):
         Yields:
             The absolute temporary `path` as a `pathlib.Path` object
         """
-        if self.is_local:
-            tmp = None
-            path = uri_to_path(self.uri)
-        else:
-            tmp = get_virtual_store()
-            tmp_store = tmp.__enter__()
-            with self.open("rb") as i:
-                with tmp_store.open(self.key, "wb") as o:
-                    stream(i, o)
-            path = path_from_uri(tmp_store._keys.to_fs_key(self.key))
-        try:
-            yield path
-        finally:
-            if tmp is not None:
-                tmp.__exit__(None, None, None)
+        return self.store.local_path(self.key)
 
-    @contextlib.contextmanager
-    def local_open(self) -> Generator[VirtualIO, None, None]:
+    def local_open(self) -> ContextManager[VirtualIO]:
         """
         Download a file for temporary local processing and get its checksum and
         an open handler. If the file itself is already on the local filesystem,
@@ -190,8 +171,4 @@ class UriResource(UriHandler):
                 - the absolute temporary `path` as a `pathlib.Path` object
                 - [`info`][anystore.model.Stats] object
         """
-        with self.local_path() as path:
-            with path.open("rb") as fh:
-                checksum = make_checksum(fh)
-                fh.seek(0)
-                yield VirtualIO(fh, checksum=checksum, path=path, info=self.info())
+        return self.store.local_open(self.key)

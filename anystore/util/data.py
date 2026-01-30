@@ -89,7 +89,7 @@ def model_dump(obj: BaseModel, clean: bool | None = False) -> SDict:
     Serialize a pydantic object to a dict by alias and json mode
 
     Args:
-        clean: Apply [clean_dict][anystore.util.clean_dict]
+        clean: Apply [clean_dict][anystore.util.data.clean_dict]
     """
     data = obj.model_dump(by_alias=True, mode="json")
     if clean:
@@ -105,7 +105,7 @@ def dump_json(
 
     Args:
         obj: The data object (dictionary with string keys)
-        clean: Apply [clean_dict][anystore.util.clean_dict]
+        clean: Apply [clean_dict][anystore.util.data.clean_dict]
         newline: Add a linebreak
     """
     if clean:
@@ -123,7 +123,7 @@ def dump_json_model(
 
     Args:
         obj: The pydantic object
-        clean: Apply [clean_dict][anystore.util.clean_dict]
+        clean: Apply [clean_dict][anystore.util.data.clean_dict]
         newline: Add a linebreak
     """
     data = model_dump(obj, clean)
@@ -136,7 +136,7 @@ def dump_yaml(obj: SDict, clean: bool | None = False, newline: bool | None = Fal
 
     Args:
         obj: The data object (dictionary with string keys)
-        clean: Apply [clean_dict][anystore.util.clean_dict]
+        clean: Apply [clean_dict][anystore.util.data.clean_dict]
         newline: Add a linebreak
     """
     if clean:
@@ -155,7 +155,7 @@ def dump_yaml_model(
 
     Args:
         obj: The pydantic object
-        clean: Apply [clean_dict][anystore.util.clean_dict]
+        clean: Apply [clean_dict][anystore.util.data.clean_dict]
         newline: Add a linebreak
     """
     data = model_dump(obj, clean)

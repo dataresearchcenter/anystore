@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from anystore.interface.tags import Tags
 from anystore.store import Store, get_store
 from anystore.types import Model, Uri
-from anystore.util import ensure_uuid
+from anystore.util.misc import ensure_uuid
 
 T = TypeVar("T")
 

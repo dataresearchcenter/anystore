@@ -4,17 +4,12 @@ from urllib.parse import urlparse
 
 from pydantic import field_validator
 
+from anystore.logic.constants import SCHEME_FILE, SCHEME_MEMORY, SCHEME_REDIS, SCHEME_S3
 from anystore.logic.serialize import Mode
+from anystore.logic.uri import ensure_uri
 from anystore.model.base import BaseModel
 from anystore.settings import Settings
 from anystore.types import Model, Uri
-from anystore.util import (
-    SCHEME_FILE,
-    SCHEME_MEMORY,
-    SCHEME_REDIS,
-    SCHEME_S3,
-    ensure_uri,
-)
 
 if TYPE_CHECKING:
     from anystore.store import Store

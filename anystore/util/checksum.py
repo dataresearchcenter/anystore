@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from banal.cache import bytes_iter
 
-from anystore.logic.io import CHUNK_SIZE
+from anystore.logic.constants import CHUNK_SIZE
 from anystore.logic.uri import join_relpaths
 from anystore.types import Uri
 
@@ -25,7 +25,7 @@ def make_checksum(io: BinaryIO, algorithm: str = DEFAULT_HASH_ALGORITHM) -> str:
         ```
 
     Note:
-        See [`make_data_checksum`][anystore.util.make_data_checksum] for easier
+        See [`make_data_checksum`][anystore.util.checksum.make_data_checksum] for easier
         implementation for arbitrary input data.
 
     Args:

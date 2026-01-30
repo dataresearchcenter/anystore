@@ -6,7 +6,7 @@ from rigour.mime import DEFAULT, normalize_mimetype
 
 from anystore.model.base import BaseModel
 from anystore.settings import Settings
-from anystore.util import guess_mimetype
+from anystore.util.misc import guess_mimetype
 
 settings = Settings()
 
