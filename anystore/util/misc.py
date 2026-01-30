@@ -10,7 +10,7 @@ from rigour.mime import normalize_mimetype
 from uuid_extensions import uuid7
 
 from anystore.logging import get_logger
-from anystore.logic.uri import uri_to_path
+from anystore.logic.uri import ensure_uri, uri_to_path
 from anystore.types import Uri
 
 log = get_logger(__name__)
@@ -20,6 +20,9 @@ def rm_rf(uri: Uri) -> None:
     """
     like `rm -rf`, ignoring errors.
     """
+    uri = ensure_uri(uri)
+    if not uri.startswith("file"):
+        raise ValueError(f"Uri not local: `{uri}`")
     try:
         p = uri_to_path(uri)
         if p.is_dir():
