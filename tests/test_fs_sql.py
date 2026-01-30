@@ -2,6 +2,26 @@ import fsspec
 import pytest
 
 from anystore.fs.sql import SqlFileSystem
+from tests.fs_shared import (
+    test_cat_file_range,
+    test_cat_file_slice,
+    test_exists,
+    test_find,
+    test_info_directory,
+    test_info_file,
+    test_info_not_found,
+    test_ls_root,
+    test_ls_subdir,
+    test_mkdir_noop,
+    test_open_read,
+    test_open_read_chunks,
+    test_open_read_not_found,
+    test_open_seek_read,
+    test_open_write,
+    test_pipe_and_cat,
+    test_rm_file,
+    test_upsert_overwrites,
+)
 
 
 @pytest.fixture
@@ -10,92 +30,19 @@ def fs():
     conn = inst._get_conn()
     conn.execute(inst._table.delete())
     conn.commit()
-    return inst
+    yield inst
+    # Clean up to avoid leaking state to other SQL tests
+    conn = inst._get_conn()
+    conn.execute(inst._table.delete())
+    conn.commit()
 
 
-def test_fs_sql_pipe_and_cat(fs):
-    fs.pipe_file("key.txt", b"hello")
-    assert fs.cat_file("key.txt") == b"hello"
+@pytest.fixture
+def key():
+    return lambda k: k
 
 
-def test_fs_sql_cat_slice(fs):
-    fs.pipe_file("key.txt", b"hello world")
-    assert fs.cat_file("key.txt", start=6) == b"world"
-    assert fs.cat_file("key.txt", end=5) == b"hello"
-
-
-def test_fs_sql_exists(fs):
-    assert not fs.exists("nope")
-    fs.pipe_file("yes", b"1")
-    assert fs.exists("yes")
-
-
-def test_fs_sql_info_file(fs):
-    fs.pipe_file("f.txt", b"abc")
-    info = fs.info("f.txt")
-    assert info["name"] == "f.txt"
-    assert info["type"] == "file"
-    assert info["size"] == 3
-
-
-def test_fs_sql_info_directory(fs):
-    fs.pipe_file("d/f.txt", b"x")
-    info = fs.info("d")
-    assert info["type"] == "directory"
-
-
-def test_fs_sql_info_not_found(fs):
-    with pytest.raises(FileNotFoundError):
-        fs.info("missing")
-
-
-def test_fs_sql_ls_root(fs):
-    fs.pipe_file("a.txt", b"1")
-    fs.pipe_file("d/b.txt", b"2")
-    names = sorted(fs.ls("", detail=False))
-    assert names == ["a.txt", "d"]
-
-
-def test_fs_sql_ls_subdir(fs):
-    fs.pipe_file("d/x.txt", b"1")
-    fs.pipe_file("d/y.txt", b"2")
-    names = sorted(fs.ls("d", detail=False))
-    assert names == ["d/x.txt", "d/y.txt"]
-
-
-def test_fs_sql_rm_file(fs):
-    fs.pipe_file("k", b"v")
-    assert fs.exists("k")
-    fs.rm_file("k")
-    assert not fs.exists("k")
-
-
-def test_fs_sql_open_read(fs):
-    fs.pipe_file("r.txt", b"data")
-    with fs.open("r.txt", "rb") as f:
-        assert f.read() == b"data"
-
-
-def test_fs_sql_open_read_not_found(fs):
-    with pytest.raises(FileNotFoundError):
-        fs.open("nope", "rb")
-
-
-def test_fs_sql_open_write(fs):
-    with fs.open("w.txt", "wb") as f:
-        f.write(b"written")
-    assert fs.cat_file("w.txt") == b"written"
-
-
-def test_fs_sql_upsert_overwrites(fs):
-    fs.pipe_file("k", b"v1")
-    fs.pipe_file("k", b"v2")
-    assert fs.cat_file("k") == b"v2"
-
-
-def test_fs_sql_mkdir_noop(fs):
-    fs.mkdir("whatever")
-    fs.makedirs("a/b/c")
+# -- shared tests (imported above) are collected by pytest automatically --
 
 
 def test_fs_sql_fsspec_init():

@@ -12,6 +12,16 @@ def get_store(request: Request) -> Store:
     return request.app.state.store
 
 
+def _is_file(store: Store, key: str) -> bool:
+    """Return True only if *key* is an actual stored value (not a directory prefix)."""
+    fs_key = store._keys.to_fs_key(key)
+    try:
+        info = store._fs.info(fs_key)
+        return info.get("type") != "directory"
+    except FileNotFoundError:
+        return False
+
+
 router = APIRouter()
 
 
@@ -32,20 +42,14 @@ def iterate_keys(
 
 
 @router.get("/{key:path}")
-def get_key(
+def get(
     key: str,
-    pop: bool = False,
     range: str | None = Header(default=None),
     store: Store = Depends(get_store),
 ) -> Response:
-    stats = store.info(key)  # raises FileNotFoundError if missing
-    if pop:
-        value = store.pop(key, raise_on_nonexist=True, serialization_mode="raw")
-        return Response(
-            content=value,
-            media_type=stats.mimetype,
-            headers={"Accept-Ranges": "bytes"},
-        )
+    if not _is_file(store, key):
+        raise FileNotFoundError(key)
+    stats = store.info(key)
     if range is not None:
         total = stats.size
         start, end = parse_range(range, total)
@@ -81,16 +85,16 @@ def get_key(
 
 
 @router.head("/{key:path}")
-def head_key(
+def head(
     key: str,
     checksum: bool = False,
     algorithm: str = "sha1",
     store: Store = Depends(get_store),
 ) -> Response:
-    if not store.exists(key):
+    if not _is_file(store, key):
         return Response(status_code=404)
-    headers: dict[str, str] = {}
     stats = store.info(key)
+    headers: dict[str, str] = {}
     # Standard HTTP headers (for fsspec HTTPFileSystem compatibility)
     headers["Content-Length"] = str(stats.size)
     headers["Content-Type"] = stats.mimetype
@@ -109,7 +113,7 @@ def head_key(
 
 
 @router.put("/{key:path}")
-async def put_key(
+async def put(
     key: str,
     request: Request,
     store: Store = Depends(get_store),
@@ -121,7 +125,7 @@ async def put_key(
 
 
 @router.delete("/{key:path}")
-def delete_key(
+def delete(
     key: str,
     store: Store = Depends(get_store),
 ) -> Response:
@@ -132,7 +136,7 @@ def delete_key(
 
 
 @router.patch("/{key:path}")
-def touch_key(
+def touch(
     key: str,
     store: Store = Depends(get_store),
 ) -> Response:

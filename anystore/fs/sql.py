@@ -92,6 +92,7 @@ class SqlFileSystem(AbstractFileSystem):
 
     protocol = "sql"
     root_marker = ""
+    cachable = False  # codespell:ignore-line
 
     def __init__(
         self,

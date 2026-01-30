@@ -62,6 +62,17 @@ class ApiFileSystem(HTTPFileSystem):
     # exists – use HEAD via _info instead of HTTPFileSystem's GET
     # ------------------------------------------------------------------
 
+    async def _info(self, url, **kwargs):
+        try:
+            return await super()._info(url, **kwargs)
+        except FileNotFoundError:
+            # Check for implicit directory via prefix listing
+            _, _, flat_urls = await self._ls_flat(url)
+            if flat_urls:
+                url = self._strip_protocol(url)
+                return {"name": url, "size": 0, "type": "directory"}
+            raise
+
     async def _exists(self, path, **kwargs):
         try:
             await self._info(path, **kwargs)
@@ -73,7 +84,8 @@ class ApiFileSystem(HTTPFileSystem):
     # ls
     # ------------------------------------------------------------------
 
-    async def _ls_real(self, url, detail=True, **kwargs):
+    async def _ls_flat(self, url, **kwargs):
+        """Return all keys under *url* as full URLs (no directory grouping)."""
         url = self._strip_protocol(url)
         base = self._base_url(url)
         path = url[len(base) :].strip("/")
@@ -85,10 +97,34 @@ class ApiFileSystem(HTTPFileSystem):
             resp.raise_for_status()
             text = await resp.text()
             keys = [k for k in text.splitlines() if k]
-        full_urls = [f"{base}/{k}" for k in keys]
+        return base, path, [f"{base}/{k}" for k in keys]
+
+    async def _ls_real(self, url, detail=True, **kwargs):
+        base, path, flat_urls = await self._ls_flat(url, **kwargs)
+        prefix = f"{base}/{path}/" if path else f"{base}/"
+
+        entries: dict[str, dict] = {}
+        for full_url in flat_urls:
+            relative = full_url[len(prefix) :]
+            if "/" in relative:
+                child = relative.split("/", 1)[0]
+                child_url = f"{prefix}{child}"
+                if child_url not in entries:
+                    entries[child_url] = {
+                        "name": child_url,
+                        "size": 0,
+                        "type": "directory",
+                    }
+            else:
+                if detail:
+                    entries[full_url] = await self._info(full_url, **kwargs)
+                else:
+                    entries[full_url] = {"name": full_url}
+
+        result = list(entries.values())
         if not detail:
-            return full_urls
-        return [await self._info(u, **kwargs) for u in full_urls]
+            return [e["name"] for e in result]
+        return result
 
     # ------------------------------------------------------------------
     # find
@@ -97,10 +133,11 @@ class ApiFileSystem(HTTPFileSystem):
     async def _find(
         self, path="", maxdepth=None, withdirs=False, detail=False, **kwargs
     ):
-        entries = await self._ls_real(path, detail=True, **kwargs)
+        _, _, flat_urls = await self._ls_flat(path, **kwargs)
         if detail:
+            entries = [await self._info(u, **kwargs) for u in flat_urls]
             return {e["name"]: e for e in entries}
-        return [e["name"] for e in entries]
+        return flat_urls
 
     # ------------------------------------------------------------------
     # _open

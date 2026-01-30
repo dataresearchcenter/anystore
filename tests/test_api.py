@@ -96,10 +96,11 @@ def test_api_list_keys_prefix(populated_client):
 
 
 def test_api_pop(populated_client):
-    res = populated_client.get("/hello?pop=true")
+    res = populated_client.get("/hello")
     assert res.status_code == 200
     assert res.content == b"world"
-    # key should be gone
+    res = populated_client.delete("/hello")
+    assert res.status_code == 204
     res = populated_client.get("/hello")
     assert res.status_code == 404
 
