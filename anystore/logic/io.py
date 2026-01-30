@@ -8,7 +8,7 @@ from typing import IO, Any, AnyStr, BinaryIO, Generator, TextIO, TypeAlias
 from anystore.exceptions import DoesNotExist
 from anystore.types import Uri as _Uri
 
-CHUNK_SIZE = 8192
+CHUNK_SIZE = 5 * 1024 * 1024  # 5 MB
 DEFAULT_MODE = "rb"
 DEFAULT_WRITE_MODE = "wb"
 

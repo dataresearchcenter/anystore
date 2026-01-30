@@ -6,8 +6,8 @@ import pytest
 from anystore.core.resource import UriResource
 from anystore.exceptions import DoesNotExist
 from anystore.io import smart_read
+from anystore.logic.uri import CURRENT
 from anystore.model import Stats
-from anystore.util import CURRENT
 
 FIXTURES_PATH = (Path(__file__).parent / "fixtures").absolute()
 

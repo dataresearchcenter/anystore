@@ -30,6 +30,10 @@ def test_util_ensure_uri():
     assert util.ensure_uri("./foo").startswith("file:///")
     assert util.ensure_uri(Path("./foo")).startswith("file:///")
     assert util.ensure_uri("/foo") == "file:///foo"
+    assert util.ensure_uri("memory://foo") == "memory://foo"
+    assert util.ensure_uri("sqlite:///foo") == "sqlite:///foo"
+    assert util.ensure_uri("sqlite:////foo") == "sqlite:////foo"
+    assert util.ensure_uri("memory://") == "memory://"
 
     with pytest.raises(ValueError):
         assert util.ensure_uri("")
@@ -45,10 +49,12 @@ def test_util_uris():
     assert util.join_uri("/tmp", "foo") == "file:///tmp/foo"
     assert util.join_uri(Path("./foo"), "bar").startswith("file:///")
     assert util.join_uri(Path("./foo"), "bar").endswith("foo/bar")
-    assert util.join_uri("s3://foo/bar.pdf", "../baz.txt") == "s3://foo/baz.txt"
-    assert util.join_uri("redis://foo/bar.pdf", "../baz.txt") == "redis://foo/baz.txt"
-    assert util.join_uri("memory://", "bar") == "memory:///bar"
-    assert util.join_uri("memory://foo/bar.pdf", "../baz.txt") == "memory://foo/baz.txt"
+    assert util.join_uri("s3://foo/bar", "./baz.txt") == "s3://foo/bar/baz.txt"
+    assert (
+        util.join_uri("redis://foo/bar.pdf", "baz.txt") == "redis://foo/bar.pdf/baz.txt"
+    )
+    assert util.join_uri("memory://", "bar") == "memory://bar"
+    assert util.join_uri("memory://foo/bar", "/baz.txt") == "memory://foo/bar/baz.txt"
     assert util.join_uri("/tmp/bar", ".") == "file:///tmp/bar"
 
     assert util.join_relpaths("/a/b/c/", "d/e") == "a/b/c/d/e"
@@ -61,6 +67,9 @@ def test_util_uris():
 
     assert util.name_from_uri("foo/bar") == "bar"
     assert util.name_from_uri("s3://foo/bar") == "bar"
+
+    with pytest.raises(ValueError):
+        util.join_uri("/tmp/foo", "../bar")
 
 
 def test_util_checksum(tmp_path, fixtures_path):

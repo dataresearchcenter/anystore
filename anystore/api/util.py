@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import IO, Iterator
 
-CHUNK_SIZE = 1024 * 1024  # 1 MB
+from anystore.logic.io import CHUNK_SIZE
 
 
 def iter_chunks(fh: IO, size: int = CHUNK_SIZE) -> Iterator[bytes]:

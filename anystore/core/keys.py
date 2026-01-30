@@ -1,7 +1,6 @@
 """Core handler for store absolute/relative key conversion"""
 
 from functools import cached_property
-from urllib.parse import unquote, urlparse
 
 import fsspec
 from fsspec.implementations.http import HTTPFileSystem
@@ -11,30 +10,8 @@ from fsspec.implementations.memory import MemoryFileSystem
 from anystore.fs.api import ApiFileSystem
 from anystore.fs.redis import RedisFileSystem
 from anystore.fs.sql import SqlFileSystem
-from anystore.logic.uri import UriHandler
+from anystore.logic.uri import UriHandler, validate_relative_uri, validate_uri
 from anystore.types import Uri
-from anystore.util import CURRENT
-
-
-def validate_key(key: Uri | None = None) -> str:
-    if not key:
-        raise ValueError(f"Invalid empty key: `{key}`")
-    key = str(key)
-    if "../" in key:
-        raise ValueError(f"Path traversal forbidden: `{key}`")
-    return unquote(key).rstrip("/")
-
-
-def validate_relative_key(key: Uri | None = None) -> str:
-    """Empty keys, absolute keys or uris are not allowed here"""
-    key = validate_key(key)
-    if key.startswith("/"):
-        raise ValueError(f"Invalid absolute key: `{key}`")
-    uri = urlparse(key)
-    if uri.scheme:
-        raise ValueError(f"Invalid absolute key: `{key}`")
-    key = unquote(key).rstrip("/")
-    return "/".join(p for p in key.split("/") if p != CURRENT)
 
 
 class Keys:
@@ -68,7 +45,7 @@ class Keys:
 
     def to_fs_key(self, key: Uri) -> str:
         """Convert a relative key to the backend fs key"""
-        key = validate_relative_key(key)
+        key = validate_relative_uri(key)
         if self.key_prefix:
             if key:
                 return f"{self.key_prefix}/{key}"
@@ -77,7 +54,7 @@ class Keys:
 
     def from_fs_key(self, key: Uri) -> str:
         """Convert a fs key to relative key"""
-        key = validate_key(key)
+        key = validate_uri(key)
         # MemoryFileSystem.find() may return keys with a leading slash
         if isinstance(self.fs, MemoryFileSystem):
             key = key.lstrip("/")
