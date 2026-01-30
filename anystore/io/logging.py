@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import logging
-from typing import ContextManager, Generator, Iterable, TypeVar
+from typing import Generator, Iterable, TypeVar
 
 from structlog.stdlib import BoundLogger
 from tqdm import tqdm
 
 from anystore.logging import get_logger
-from anystore.logic.virtual import VirtualIO
-from anystore.store.resource import UriResource
-from anystore.types import Uri as TUri
 
 log = get_logger(__name__)
 
@@ -65,8 +62,3 @@ def logged_items(
             yield item
     if ix:
         log_.info(f"{action} {ix} `{item_name}s`: Done.", **log_kwargs)
-
-
-def open_virtual(uri: TUri, **kwargs) -> ContextManager[VirtualIO]:
-    """Wrapper for [UriResource.local_open][anystore.store.resource.UriResource.local_open]"""
-    return UriResource(uri, **kwargs).local_open()

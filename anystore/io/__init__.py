@@ -1,6 +1,7 @@
 from anystore.io.handler import SmartHandler, smart_open
-from anystore.io.logging import logged_items, open_virtual
+from anystore.io.logging import logged_items
 from anystore.io.read import (
+    open_virtual,
     smart_read,
     smart_stream,
     smart_stream_csv,

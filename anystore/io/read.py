@@ -27,7 +27,7 @@ Python usage:
 from __future__ import annotations
 
 import csv
-from typing import Any, AnyStr, Generator, Type
+from typing import Any, AnyStr, ContextManager, Generator, Type
 
 import orjson
 
@@ -35,7 +35,10 @@ from anystore.io.handler import smart_open
 from anystore.io.logging import logged_items
 from anystore.logic.constants import DEFAULT_MODE
 from anystore.logic.io import Uri, iter_lines
+from anystore.logic.virtual import VirtualIO
+from anystore.store.resource import UriResource
 from anystore.types import M, MGenerator, SDictGenerator
+from anystore.types import Uri as TUri
 
 Formats = str  # "csv" | "json" — re-exported from write.py at package level
 
@@ -194,3 +197,8 @@ def smart_read(uri: Uri, mode: str | None = DEFAULT_MODE, **kwargs: Any) -> AnyS
     """
     with smart_open(uri, mode, **kwargs) as fh:
         return fh.read()
+
+
+def open_virtual(uri: "TUri", **kwargs) -> ContextManager[VirtualIO]:
+    """Wrapper for [UriResource.local_open][anystore.store.resource.UriResource.local_open]"""
+    return UriResource(uri, **kwargs).local_open()
