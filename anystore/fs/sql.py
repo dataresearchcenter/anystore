@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import io
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from banal import ensure_dict
@@ -115,6 +115,16 @@ class SqlFileSystem(AbstractFileSystem):
         metadata.create_all(self._engine, tables=[self._table], checkfirst=True)
         self._local = threading.local()
 
+    @staticmethod
+    def _is_expired(row) -> bool:
+        """Check if a row with (…, timestamp, ttl) columns has expired."""
+        ts, ttl = row[-2], row[-1]
+        if ttl is None:
+            return False
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > ts + timedelta(seconds=ttl)
+
     def _get_conn(self) -> Connection:
         if not hasattr(self._local, "conn"):
             self._local.conn = self._engine.connect()
@@ -129,14 +139,22 @@ class SqlFileSystem(AbstractFileSystem):
 
         conn = self._get_conn()
         prefix = f"{path}/" if path else ""
-        stmt = select(self._table.c.key, self._table.c.value, self._table.c.timestamp)
+        stmt = select(
+            self._table.c.key,
+            self._table.c.value,
+            self._table.c.timestamp,
+            self._table.c.ttl,
+        )
         if prefix:
             stmt = stmt.where(self._table.c.key.like(f"{prefix}%"))
 
         rows = conn.execute(stmt).fetchall()
 
         entries: dict[str, dict] = {}
-        for key, value, ts in rows:
+        for row in rows:
+            key, value, ts, ttl = row
+            if self._is_expired(row):
+                continue
             key = key.strip("/")
             if prefix:
                 relative = key[len(prefix) :]
@@ -177,11 +195,14 @@ class SqlFileSystem(AbstractFileSystem):
 
         conn = self._get_conn()
         stmt = select(
-            self._table.c.key, self._table.c.value, self._table.c.timestamp
+            self._table.c.key,
+            self._table.c.value,
+            self._table.c.timestamp,
+            self._table.c.ttl,
         ).where(self._table.c.key == path)
         row = conn.execute(stmt).first()
-        if row:
-            _, value, ts = row
+        if row and not self._is_expired(row):
+            _, value, ts, _ = row
             return {
                 "name": path,
                 "size": len(value) if value is not None else 0,
@@ -215,9 +236,11 @@ class SqlFileSystem(AbstractFileSystem):
         path = self._strip_protocol(path).strip("/")
         if "r" in mode:
             conn = self._get_conn()
-            stmt = select(self._table.c.value).where(self._table.c.key == path)
+            stmt = select(
+                self._table.c.value, self._table.c.timestamp, self._table.c.ttl
+            ).where(self._table.c.key == path)
             row = conn.execute(stmt).first()
-            if row is None:
+            if row is None or self._is_expired(row):
                 raise FileNotFoundError(path)
             data = row[0] or b""
             return io.BytesIO(data)
@@ -231,9 +254,11 @@ class SqlFileSystem(AbstractFileSystem):
     def cat_file(self, path: str, start=None, end=None, **kwargs) -> bytes:
         path = self._strip_protocol(path).strip("/")
         conn = self._get_conn()
-        stmt = select(self._table.c.value).where(self._table.c.key == path)
+        stmt = select(
+            self._table.c.value, self._table.c.timestamp, self._table.c.ttl
+        ).where(self._table.c.key == path)
         row = conn.execute(stmt).first()
-        if row is None:
+        if row is None or self._is_expired(row):
             raise FileNotFoundError(path)
         data = row[0] or b""
         if start is not None or end is not None:
