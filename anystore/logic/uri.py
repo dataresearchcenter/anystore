@@ -110,6 +110,20 @@ class UriHandler:
         return "sql" in self.scheme
 
 
+def make_uri(uri: Uri, **kwargs) -> UriHandler:
+    """
+    Factory for creating a `UriHandler` instance.
+
+    Args:
+        uri: Any uri-like input
+        **kwargs: Extra keyword arguments passed to `UriHandler`
+
+    Returns:
+        A `UriHandler` instance
+    """
+    return UriHandler(uri, **kwargs)
+
+
 def join_uri(uri: Any, path: str) -> str:
     """
     Ensure correct joining of arbitrary uris with a path.
