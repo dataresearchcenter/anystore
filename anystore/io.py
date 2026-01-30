@@ -55,6 +55,7 @@ from anystore.logic.io import (
     DEFAULT_WRITE_MODE,
     SmartHandler,
     Uri,
+    iter_lines,
     smart_open,
     stream,
 )
@@ -115,8 +116,7 @@ def smart_stream(
         A generator of `str` or `byte` content, depending on `mode`
     """
     with smart_open(uri, mode, **kwargs) as fh:
-        while line := fh.readline():
-            yield line.strip()
+        yield from iter_lines(fh)
 
 
 def smart_stream_csv(uri: Uri, **kwargs: Any) -> SDictGenerator:

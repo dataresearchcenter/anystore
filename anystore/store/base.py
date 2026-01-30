@@ -25,6 +25,7 @@ from anystore.core.keys import Keys
 from anystore.exceptions import DoesNotExist
 from anystore.io import DEFAULT_MODE
 from anystore.logging import get_logger
+from anystore.logic.io import iter_lines
 from anystore.logic.serialize import Mode, from_store, to_store
 from anystore.model import Info, Stats, StoreModel
 from anystore.settings import Settings
@@ -340,7 +341,7 @@ class Store(StoreModel, Generic[V, Raise]):
         key = self._keys.to_fs_key(key)
         try:
             with self._fs.open(key) as i:
-                while line := i.readline():
+                for line in iter_lines(i):
                     yield from_store(line, **extra_kwargs)
         except FileNotFoundError:
             if raise_on_nonexist:
