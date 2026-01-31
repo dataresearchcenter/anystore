@@ -59,17 +59,15 @@ def _iter_lines_chunked(
         buf += chunk
         while sep in buf:
             line, buf = buf.split(sep, 1)
-            if line.strip():
-                yield line.strip()
-    if buf.strip():
-        yield buf.strip()
+            yield line
+    if buf:
+        yield buf
 
 
 def iter_lines(fh: IO, chunk_size: int = CHUNK_SIZE) -> Generator[AnyStr, None, None]:
-    """Iterate stripped lines from a file handle, falling back to chunk-based
-    reading for non-seekable streams (e.g. HTTP streaming files in fsspec)."""
+    """Iterate lines from a file handle, falling back to chunk-based reading for
+    non-seekable streams (e.g. HTTP streaming files in fsspec)."""
     if _is_seekable(fh):
-        while line := fh.readline():
-            yield line.strip()
+        yield from fh.readlines()
     else:
         yield from _iter_lines_chunked(fh, chunk_size)
