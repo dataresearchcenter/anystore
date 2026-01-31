@@ -4,7 +4,7 @@ level `Store.get` or `Store.put` methods.
 
 The store backends assume `bytes` to be written to and read from. The two main
 functions, `to_store` and `from_store` (de)serialize given values based on
-configuration. See higher level `anystore.store.BaseStore` for how to use
+configuration. See higher level `anystore.store.Store` for how to use
 these serialization options in the stores `get`, `put` and `stream` methods.
 
 Serialization options:

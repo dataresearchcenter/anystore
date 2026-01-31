@@ -1,5 +1,6 @@
 from pathlib import Path
-from anystore.mixins import BaseModel
+
+from anystore.model.base import BaseModel
 
 
 def test_mixin(fixtures_path: Path):
@@ -21,7 +22,7 @@ def test_mixin(fixtures_path: Path):
     model = Model.from_yaml_uri(uri)
     assert model.foo == "bar"
     assert model.baz is None
-    
+
     model = Model._from_uri(uri)
     assert model.foo == "bar"
 

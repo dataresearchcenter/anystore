@@ -1,1 +1,1 @@
-::: anystore.tags
+::: anystore.interface.tags

@@ -6,15 +6,11 @@ from rich.console import Console
 from structlog import BoundLogger
 
 from anystore import __version__
-from anystore.io import (
-    Writer,
-    smart_open,
-    smart_read,
-    smart_stream_csv,
-    smart_write,
-)
+from anystore.io.handler import smart_open
+from anystore.io.read import smart_read, smart_stream_csv
+from anystore.io.write import Writer, smart_write
 from anystore.logging import configure_logging
-from anystore.mirror import mirror
+from anystore.logic.io import stream
 from anystore.settings import Settings
 from anystore.store import get_store
 
@@ -118,35 +114,6 @@ def cli_keys(
                 out.write(line)
 
 
-@cli.command("mirror")
-def cli_mirror(
-    i: Annotated[str, typer.Option("-i", help="Input store uri")],
-    o: Annotated[str, typer.Option("-o", help="Output store uri")],
-    glob: Annotated[Optional[str], typer.Option(..., help="Key glob")] = None,
-    prefix: Annotated[Optional[str], typer.Option(..., help="Key prefix")] = None,
-    exclude_prefix: Annotated[
-        Optional[str], typer.Option(..., help="Exclude key prefix")
-    ] = None,
-    overwrite: Annotated[
-        bool, typer.Option(..., help="Overwrite existing data")
-    ] = False,
-):
-    """
-    Mirror stores
-    """
-    with ErrorHandler():
-        source = get_store(i)
-        target = get_store(o)
-        mirror(
-            source=source,
-            target=target,
-            glob=glob,
-            prefix=prefix,
-            exclude_prefix=exclude_prefix,
-            overwrite=overwrite,
-        )
-
-
 @cli.command("io")
 def cli_io(
     i: Annotated[str, typer.Option("-i", help="Input uri")] = "-",
@@ -161,7 +128,7 @@ def cli_io(
     with ErrorHandler():
         with smart_open(i) as reader:
             with smart_open(o, "wb") as writer:
-                writer.write(reader.read())
+                stream(reader, writer)
 
 
 @cli.command("csv2json")

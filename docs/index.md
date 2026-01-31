@@ -1,8 +1,13 @@
+[![Docs](https://img.shields.io/badge/docs-live-brightgreen)](https://docs.investigraph.dev/lib/anystore/)
 [![anystore on pypi](https://img.shields.io/pypi/v/anystore)](https://pypi.org/project/anystore/)
+[![PyPI Downloads](https://static.pepy.tech/badge/anystore/month)](https://pepy.tech/projects/anystore)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/anystore)](https://pypi.org/project/anystore/)
 [![Python test and package](https://github.com/dataresearchcenter/anystore/actions/workflows/python.yml/badge.svg)](https://github.com/dataresearchcenter/anystore/actions/workflows/python.yml)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![Coverage Status](https://coveralls.io/repos/github/dataresearchcenter/anystore/badge.svg?branch=main)](https://coveralls.io/github/dataresearchcenter/anystore?branch=main)
 [![AGPLv3+ License](https://img.shields.io/pypi/l/anystore)](./LICENSE)
+[![Pydantic v2](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pydantic/pydantic/main/docs/badge/v2.json)](https://pydantic.dev)
+
 
 # anystore
 
@@ -20,7 +25,7 @@ Think of it as a `key -> value` store, and `anystore` acts as a [**cache backend
 
 ## Why?
 
-[In our several data engineering projects](https://dataresearchcenter.io/projects) we always wrote boilerplate code that handles the featureset of `anystore` but not in a reusable way. This library shall be a stable foundation for data wrangling related python projects.
+[In our several data engineering projects](https://dataresearchcenter.org/projects) we always wrote boilerplate code that handles the featureset of `anystore` but not in a reusable way. This library shall be a stable foundation for data wrangling related python projects.
 
 ## Used by
 
@@ -28,7 +33,8 @@ Think of it as a `key -> value` store, and `anystore` acts as a [**cache backend
 - [investigraph](https://github.com/dataresearchcenter/investigraph),  a framework to manage collections of structured [followthemoney](https://followthemoney.tech) data
 - [ftmq-api](https://github.com/dataresearchcenter/ftmq-api), a simple api on top off `ftmq` built with [FastApi](https://fastapi.tiangolo.com/)
 - [ftm-geocode](https://github.com/dataresearchcenter/ftm-geocode), batch parse and geocode addresses from followthemoney entities
-- [ftm-datalake](https://github.com/dataresearchcenter/ftm-datalake), a library to crawl, sync and move around document collections
+- [ftm-lakehouse](https://github.com/openaleph/ftm-lakehouse), a library to crawl, store and move around document collections and structured [FollowTheMoney](https://followthemoney.tech) data (in progress)
+- The [OpenAleph](https://openaleph.org) suite in general
 
 ## License and Copyright
 

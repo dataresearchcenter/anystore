@@ -1,5 +1,5 @@
 from anystore.decorators import error_handler
-from anystore.store.base import BaseStore
+from anystore.store import Store
 
 
 class Lock:
@@ -9,7 +9,7 @@ class Lock:
 
     Example:
         ```python
-        from anystore.lock import Lock
+        from anystore.interface.lock import Lock
         from anystore.store import get_store
 
         store = get_store("redis://localhost")
@@ -24,7 +24,7 @@ class Lock:
 
     def __init__(
         self,
-        store: BaseStore,
+        store: Store,
         key: str | None = ".LOCK",
         max_retries: float | None = float("inf"),
     ) -> None:

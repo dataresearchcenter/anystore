@@ -41,7 +41,7 @@ assert data["foo"] == "bar"
 
 ## Write data
 
-Data can be written with the [`put`][anystore.store.BaseStore.put] function or via a [file-like handler][anystore.store.BaseStore.open].
+Data can be written with the [`put`][anystore.store.base.Store.put] function or via a [file-like handler][anystore.store.base.Store.open].
 
 Any existing data will be overwritten without warning.
 
@@ -56,7 +56,7 @@ with store.open("key", "wb") as fh:
 
 ## Read data
 
-Data can be read in different ways. Use [`get`][anystore.store.BaseStore.get] for just returning the value, [`pop`][anystore.store.BaseStore.pop] for deleting the entry after reading, [`stream`][anystore.store.BaseStore.stream] for reading a data stream line by line or a [file-like handler][anystore.store.BaseStore.open] for reading data similar to pythons built-in `open()`.
+Data can be read in different ways. Use [`get`][anystore.store.base.Store.get] for just returning the value, [`pop`][anystore.store.base.Store.pop] for deleting the entry after reading, [`stream`][anystore.store.base.Store.stream] for reading a data stream line by line or a [file-like handler][anystore.store.base.Store.open] for reading data similar to pythons built-in `open()`.
 
 ```python
 # simple data get
@@ -76,7 +76,7 @@ with store.open("key", "rb") as fh:
 
 ## Delete data
 
-Just call the [`delete`][anystore.store.BaseStore.delete] function:
+Just call the [`delete`][anystore.store.base.Store.delete] function:
 
 ```python
 store.delete("key")
@@ -108,6 +108,35 @@ Obtain meta information about the content (value or actual file) stored at the g
 ```python
 metadata = store.info("key")
 ```
+
+## URI resources
+
+A [`UriResource`][anystore.store.resource.UriResource] wraps a single URI and exposes the same store interface with the key pre-bound. This is useful when working with a known file location rather than a store + key pair:
+
+```python
+from anystore.store.resource import UriResource
+
+resource = UriResource("s3://mybucket/data/report.json")
+
+# write
+resource.put({"results": [1, 2, 3]})
+
+# read
+data = resource.get()
+
+# check existence and metadata
+resource.exists()
+resource.info()
+
+# file-like access
+with resource.open("rb") as fh:
+    raw = fh.read()
+
+# delete
+resource.delete()
+```
+
+The backend is inferred from the URI scheme, just like `get_store`. Under the hood, a `UriResource` splits the URI into a base store and a key, so all store features (serialization, TTL, backend config) apply.
 
 ## Dive deeper
 

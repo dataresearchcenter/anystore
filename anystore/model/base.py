@@ -8,7 +8,7 @@ from pydantic import field_validator
 
 from anystore.logging import get_logger
 from anystore.types import SDict, Uri
-from anystore.util import clean_dict, model_dump
+from anystore.util.data import clean_dict, model_dump
 
 log = get_logger(__name__)
 

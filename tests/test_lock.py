@@ -1,6 +1,6 @@
 import pytest
 
-from anystore.lock import Lock
+from anystore.interface.lock import Lock
 from anystore.store import get_store
 
 

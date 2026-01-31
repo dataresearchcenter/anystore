@@ -1,1 +1,1 @@
-::: anystore.serialize
+::: anystore.logic.serialize

@@ -1,6 +1,6 @@
 Data written to and read from a store can have different types and needs to be (de)serialized.
 
-Serialization is needed when writing to the store ([`store.put`][anystore.store.BaseStore.put] function), deserialization is needed when reading from a store ([`store.get`][anystore.store.BaseStore.get], [`store.pop`][anystore.store.BaseStore.pop] or [`store.stream`][anystore.store.BaseStore.stream]).
+Serialization is needed when writing to the store ([`store.put`][anystore.store.base.Store.put] function), deserialization is needed when reading from a store ([`store.get`][anystore.store.base.Store.get], [`store.pop`][anystore.store.base.Store.pop] or [`store.stream`][anystore.store.base.Store.stream]).
 
 Serialization can be configured in [store settings](./configuration.md), or during runtime.
 

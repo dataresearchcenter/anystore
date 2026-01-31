@@ -5,7 +5,6 @@ from typer.testing import CliRunner
 from anystore import __version__
 from anystore.cli import cli
 from anystore.io import smart_write
-from anystore.store import get_store
 from tests.conftest import setup_s3
 
 runner = CliRunner()
@@ -34,14 +33,7 @@ def test_cli(tmp_path, fixtures_path):
     res = runner.invoke(cli, ["--store", "s3://anystore", "put", "foo", "bar"])
     res = runner.invoke(cli, ["--store", "s3://anystore", "get", "foo"])
     assert res.exit_code == 0
-    # assert res.stdout == "bar"  # FIXME
-
-    res = runner.invoke(
-        cli, ["mirror", "-i", str(fixtures_path), "-o", str(tmp_path / "mirror")]
-    )
-    assert res.exit_code == 0
-    store = get_store(tmp_path / "mirror")
-    assert len([k for k in store.iterate_keys()]) == 6
+    assert res.stdout == "bar"  # FIXME
 
     res = runner.invoke(cli, ["io", "-i", str(fixtures_path / "lorem.txt")])
     assert res.exit_code == 0
