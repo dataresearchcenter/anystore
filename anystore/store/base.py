@@ -341,13 +341,12 @@ class Store(StoreModel, Generic[V, Raise]):
             "deserialization_func": deserialization_func or self.deserialization_func,
             "model": model,
         }
-        key = self._keys.to_fs_key(key)
         try:
-            with self._fs.open(key) as i:
+            with self.open(key) as i:
                 for line in iter_lines(i):
                     yield from_store(line, **extra_kwargs)
         except FileNotFoundError:
-            if raise_on_nonexist:
+            if raise_on_nonexist is True or self.raise_on_nonexist:
                 raise DoesNotExist(f"Key does not exist: `{key}`")
             return None
 
@@ -474,9 +473,9 @@ class Store(StoreModel, Generic[V, Raise]):
             base = self._keys.to_fs_key(prefix)
         else:
             base = self._keys.key_prefix
+
         if glob:
-            glob = self._keys.to_fs_key(glob)
-            keys = self._fs.glob(glob)
+            keys = self._fs.glob(f"{base}/{glob}")
         else:
             try:
                 keys = self._fs.find(base)
@@ -601,6 +600,9 @@ class Store(StoreModel, Generic[V, Raise]):
         if self.is_local:
             parent = Path(fs_key).parent
             self._fs.mkdirs(parent, exist_ok=True)
+
+    def to_uri(self, key: Uri) -> str:
+        return self._keys.to_absolute_uri(key)
 
     @contextlib.contextmanager
     def local_path(self, key: Uri) -> Generator[Path, None, None]:
