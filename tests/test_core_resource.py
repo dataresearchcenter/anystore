@@ -5,7 +5,7 @@ import pytest
 
 from anystore.exceptions import DoesNotExist
 from anystore.io import smart_read
-from anystore.logic.uri import CURRENT
+from anystore.logic.uri import CURRENT, UriHandler
 from anystore.logic.virtual import VirtualIO
 from anystore.model import Stats
 from anystore.store.resource import UriResource
@@ -174,3 +174,11 @@ def test_core_resource_local_open(fixtures_path):
         assert len(fh.checksum) == 40
         assert fh.read() == r.get(serialization_mode="raw")
     assert fh.path.exists()
+
+
+def test_core_resource_uri_chain():
+    r = UriResource("https://example.org/foo")
+    child = r / "bar.txt"
+    assert isinstance(child, UriHandler)
+    assert child.is_http
+    assert str(child.uri) == "https://example.org/foo/bar.txt"

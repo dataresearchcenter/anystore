@@ -70,8 +70,8 @@ class UriHandler:
     def __contains__(self, other: str) -> bool:
         return other in str(self.uri)
 
-    def __truediv__(self, other: str) -> "UriHandler":
-        return self.__class__(join_uri(self.uri, other), **self._kwargs)
+    def __truediv__(self, other: Uri) -> "UriHandler":
+        return self.__class__(join_uri(self.uri, str(other)), **self._kwargs)
 
     @cached_property
     def parsed(self) -> ParseResult:

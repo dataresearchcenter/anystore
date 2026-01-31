@@ -61,3 +61,6 @@ class Keys:
         if key.startswith(self.key_prefix):
             return key[len(self.key_prefix) :].strip("/")
         raise ValueError(f"Invalid key `{key}`, doesn't has base `{self.key_prefix}`")
+
+    def to_absolute_uri(self, key: Uri) -> str:
+        return str(self.uri / key)

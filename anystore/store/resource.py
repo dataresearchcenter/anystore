@@ -10,6 +10,7 @@ with the key pre-bound. Consumers use it as:
 from __future__ import annotations
 
 from datetime import datetime
+from functools import cached_property
 from pathlib import Path
 from typing import IO, Any, Callable, ContextManager, Generator
 
@@ -44,6 +45,10 @@ class UriResource(UriHandler):
         else:  # https://example.org
             self.store = Store(uri=self.uri, **kwargs)
             self.key = CURRENT
+
+    @cached_property
+    def name(self) -> str:
+        return Path(self.uri).name
 
     def info(self) -> Stats:
         return self.store.info(self.key)
