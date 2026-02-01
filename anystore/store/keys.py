@@ -4,11 +4,9 @@ from functools import cached_property
 
 import fsspec
 from fsspec.implementations.http import HTTPFileSystem
-from fsspec.implementations.local import LocalFileSystem
-from fsspec.implementations.memory import MemoryFileSystem
 
 from anystore.fs.api import ApiFileSystem
-from anystore.logic.constants import SCHEME_REDIS
+from anystore.logic.constants import SCHEME_FILE, SCHEME_MEMORY, SCHEME_REDIS
 from anystore.logic.uri import UriHandler, validate_relative_uri, validate_uri
 from anystore.types import Uri
 
@@ -23,10 +21,10 @@ class Keys:
 
     @cached_property
     def key_prefix(self) -> str:
-        if isinstance(self.fs, LocalFileSystem):
+        if self.uri.scheme == SCHEME_FILE:
             return self.uri.parsed.path.rstrip("/")
         path = self.uri.parsed.path.strip("/")
-        if isinstance(self.fs, MemoryFileSystem):
+        if self.uri.scheme == SCHEME_MEMORY:
             return self._base_path.strip("/")
         if self.uri.scheme == SCHEME_REDIS:
             return path
@@ -55,7 +53,7 @@ class Keys:
         """Convert a fs key to relative key"""
         key = validate_uri(key)
         # MemoryFileSystem.find() may return keys with a leading slash
-        if isinstance(self.fs, MemoryFileSystem):
+        if self.uri.scheme == SCHEME_MEMORY:
             key = key.lstrip("/")
         if key.startswith(self.key_prefix):
             return key[len(self.key_prefix) :].strip("/")
