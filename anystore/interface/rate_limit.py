@@ -13,11 +13,9 @@ class RateLimit:
 
     Example:
         ```python
-        from anystore.interface.rate_limit import RateLimit
-        from anystore.store import get_store
+        from anystore.interface import get_rate_limit
 
-        store = get_store("redis://localhost/rate-limits")
-        limit = RateLimit(store, "my-resource", limit=100, interval=60)
+        limit = get_rate_limit("redis://localhost", "my-resource", limit=100, interval=60)
         if limit.check():
             limit.update()
         ```
@@ -32,6 +30,7 @@ class RateLimit:
         unit: int = 1,
     ) -> None:
         self.store = store
+        self.store.raise_on_nonexist = False
         self.resource = resource
         self.limit = max(0.1, limit)
         self.interval = max(1, interval)
