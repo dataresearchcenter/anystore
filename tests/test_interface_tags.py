@@ -4,9 +4,7 @@ from datetime import datetime
 from anystore.interface.tags import get_tags
 
 
-def test_tags(tmp_path):
-    tags = get_tags(tmp_path, raise_on_nonexist=False)
-
+def _test_tags(tags):
     tags.put("foo", "bar")
     assert tags.get("foo") == "bar"
 
@@ -26,6 +24,7 @@ def test_tags(tmp_path):
         except Exception:
             pass
 
+    _fail()
     assert tags.get("runs/4/succeed") is None
 
     assert len([k for k in tags.iterate_keys()]) == 3
@@ -35,3 +34,13 @@ def test_tags(tmp_path):
 
     tags.delete()
     assert len([k for k in tags.iterate_keys()]) == 0
+
+
+def test_tags_fs(tmp_path):
+    tags = get_tags(tmp_path, raise_on_nonexist=False)
+    _test_tags(tags)
+
+
+def test_tags_memory():
+    tags = get_tags("memory://", raise_on_nonexist=False)
+    _test_tags(tags)
