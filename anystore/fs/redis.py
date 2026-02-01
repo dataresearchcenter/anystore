@@ -7,7 +7,6 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
-import redis
 from fsspec.spec import AbstractFileSystem
 
 from anystore.functools import weakref_cache as cache
@@ -17,12 +16,15 @@ from anystore.util.misc import mask_uri
 
 if TYPE_CHECKING:
     import fakeredis
+    import redis
 
 log = get_logger(__name__)
 
 
 @cache
 def _get_redis(uri: str) -> fakeredis.FakeStrictRedis | redis.Redis:
+    import redis
+
     settings = Settings()
     if settings.redis_debug:
         import fakeredis

@@ -8,8 +8,7 @@ from fsspec.implementations.local import LocalFileSystem
 from fsspec.implementations.memory import MemoryFileSystem
 
 from anystore.fs.api import ApiFileSystem
-from anystore.fs.redis import RedisFileSystem
-from anystore.fs.sql import SqlFileSystem
+from anystore.logic.constants import SCHEME_REDIS
 from anystore.logic.uri import UriHandler, validate_relative_uri, validate_uri
 from anystore.types import Uri
 
@@ -29,9 +28,9 @@ class Keys:
         path = self.uri.parsed.path.strip("/")
         if isinstance(self.fs, MemoryFileSystem):
             return self._base_path.strip("/")
-        if isinstance(self.fs, RedisFileSystem):
+        if self.uri.scheme == SCHEME_REDIS:
             return path
-        if isinstance(self.fs, SqlFileSystem):
+        if "sql" in self.uri.scheme:
             return ""
         if isinstance(self.fs, ApiFileSystem):
             return ApiFileSystem._strip_protocol(str(self.uri))

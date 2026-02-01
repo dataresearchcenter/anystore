@@ -7,47 +7,44 @@ from __future__ import annotations
 import io
 import threading
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from banal import ensure_dict
 from fsspec.spec import AbstractFileSystem
-from sqlalchemy import (
-    Column,
-    DateTime,
-    Integer,
-    LargeBinary,
-    MetaData,
-    Table,
-    Unicode,
-    create_engine,
-    delete,
-    insert,
-    select,
-    update,
-)
-from sqlalchemy.dialects.mysql import insert as mysql_insert
-from sqlalchemy.dialects.postgresql import insert as psql_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.engine import Connection, Engine
-from sqlalchemy.pool import StaticPool
 
 from anystore.functools import weakref_cache as cache
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Connection, Engine
 
 TABLE_NAME = "anystore"
 POOL_SIZE = 5
 
 
+def _sa():
+    """Lazy import of sqlalchemy symbols."""
+    import sqlalchemy as sa
+    from sqlalchemy.dialects.mysql import insert as mysql_insert
+    from sqlalchemy.dialects.postgresql import insert as psql_insert
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+    from sqlalchemy.pool import StaticPool
+
+    return sa, StaticPool, sqlite_insert, mysql_insert, psql_insert
+
+
 @cache
 def _get_engine(url: str, **kwargs) -> Engine:
+    sa, StaticPool, _, _, _ = _sa()
     if ":memory:" in url:
         kwargs.setdefault("poolclass", StaticPool)
         kwargs.setdefault("connect_args", {"check_same_thread": False})
     elif "pool_size" not in kwargs:
         kwargs["pool_size"] = POOL_SIZE
-    return create_engine(url, **kwargs)
+    return sa.create_engine(url, **kwargs)
 
 
 def _get_insert(engine: Engine):
+    _, _, sqlite_insert, mysql_insert, psql_insert = _sa()
     dialect = engine.dialect.name
     if dialect == "sqlite":
         return sqlite_insert
@@ -58,18 +55,19 @@ def _get_insert(engine: Engine):
     raise RuntimeError(f"Unsupported database dialect: {dialect}")
 
 
-def _make_table(name: str, metadata: MetaData) -> Table:
-    return Table(
+def _make_table(name: str, metadata) -> Any:
+    sa = _sa()[0]
+    return sa.Table(
         name,
         metadata,
-        Column("key", Unicode(), primary_key=True, unique=True, index=True),
-        Column("value", LargeBinary(), nullable=True),
-        Column(
+        sa.Column("key", sa.Unicode(), primary_key=True, unique=True, index=True),
+        sa.Column("value", sa.LargeBinary(), nullable=True),
+        sa.Column(
             "timestamp",
-            DateTime(timezone=True),
+            sa.DateTime(timezone=True),
             default=lambda: datetime.now(timezone.utc),
         ),
-        Column("ttl", Integer(), nullable=True),
+        sa.Column("ttl", sa.Integer(), nullable=True),
     )
 
 
@@ -107,10 +105,11 @@ class SqlFileSystem(AbstractFileSystem):
             engine_kwargs=engine_kwargs,
             **storage_options,
         )
+        sa = _sa()[0]
         engine_kwargs = ensure_dict(engine_kwargs)
         self._engine = _get_engine(url, **engine_kwargs)
         self._insert_func = _get_insert(self._engine)
-        metadata = MetaData()
+        metadata = sa.MetaData()
         self._table = _make_table(table, metadata)
         metadata.create_all(self._engine, tables=[self._table], checkfirst=True)
         self._local = threading.local()
@@ -135,11 +134,12 @@ class SqlFileSystem(AbstractFileSystem):
     # ------------------------------------------------------------------
 
     def ls(self, path: str, detail: bool = True, **kwargs) -> list:  # type: ignore[override]
+        sa = _sa()[0]
         path = self._strip_protocol(path).strip("/")
 
         conn = self._get_conn()
         prefix = f"{path}/" if path else ""
-        stmt = select(
+        stmt = sa.select(
             self._table.c.key,
             self._table.c.value,
             self._table.c.timestamp,
@@ -189,12 +189,13 @@ class SqlFileSystem(AbstractFileSystem):
     # ------------------------------------------------------------------
 
     def info(self, path: str, **kwargs) -> dict:
+        sa = _sa()[0]
         path = self._strip_protocol(path).strip("/")
         if not path:
             return {"name": "", "size": 0, "type": "directory"}
 
         conn = self._get_conn()
-        stmt = select(
+        stmt = sa.select(
             self._table.c.key,
             self._table.c.value,
             self._table.c.timestamp,
@@ -213,7 +214,7 @@ class SqlFileSystem(AbstractFileSystem):
         # Check if path is an implicit directory
         prefix = f"{path}/"
         stmt = (
-            select(self._table.c.key)
+            sa.select(self._table.c.key)
             .where(self._table.c.key.like(f"{prefix}%"))
             .limit(1)
         )
@@ -233,10 +234,11 @@ class SqlFileSystem(AbstractFileSystem):
         mode: str = "rb",
         **kwargs,
     ) -> io.BytesIO | SqlFileWriter:
+        sa = _sa()[0]
         path = self._strip_protocol(path).strip("/")
         if "r" in mode:
             conn = self._get_conn()
-            stmt = select(
+            stmt = sa.select(
                 self._table.c.value, self._table.c.timestamp, self._table.c.ttl
             ).where(self._table.c.key == path)
             row = conn.execute(stmt).first()
@@ -252,9 +254,10 @@ class SqlFileSystem(AbstractFileSystem):
     # ------------------------------------------------------------------
 
     def cat_file(self, path: str, start=None, end=None, **kwargs) -> bytes:
+        sa = _sa()[0]
         path = self._strip_protocol(path).strip("/")
         conn = self._get_conn()
-        stmt = select(
+        stmt = sa.select(
             self._table.c.value, self._table.c.timestamp, self._table.c.ttl
         ).where(self._table.c.key == path)
         row = conn.execute(stmt).first()
@@ -272,14 +275,17 @@ class SqlFileSystem(AbstractFileSystem):
         self._upsert(path, value)
 
     def _upsert(self, key: str, value: bytes, ttl: int | None = None) -> None:
+        sa = _sa()[0]
         conn = self._get_conn()
         now = datetime.now(timezone.utc)
-        stmt = insert(self._table).values(key=key, value=value, ttl=ttl, timestamp=now)
+        stmt = sa.insert(self._table).values(
+            key=key, value=value, ttl=ttl, timestamp=now
+        )
         try:
             conn.execute(stmt)
         except Exception:
             stmt = (
-                update(self._table)
+                sa.update(self._table)
                 .where(self._table.c.key == key)
                 .values(value=value, ttl=ttl, timestamp=now)
             )
@@ -291,9 +297,10 @@ class SqlFileSystem(AbstractFileSystem):
     # ------------------------------------------------------------------
 
     def rm_file(self, path: str) -> None:
+        sa = _sa()[0]
         path = self._strip_protocol(path).strip("/")
         conn = self._get_conn()
-        stmt = delete(self._table).where(self._table.c.key == path)
+        stmt = sa.delete(self._table).where(self._table.c.key == path)
         conn.execute(stmt)
         conn.commit()
 
