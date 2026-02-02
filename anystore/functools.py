@@ -26,7 +26,7 @@ def weakref_cache(func: Callable[P, R]) -> CachedCallable[P, R]:
     """
     cache: Dict[Tuple, Any] = {}
     hits = misses = 0
-    lock = threading.Lock()
+    lock = threading.RLock()
 
     def cleanup_callback(key: Tuple):
         """Callback to remove cache entry when weakref is garbage collected."""
