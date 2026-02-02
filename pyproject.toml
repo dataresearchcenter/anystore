@@ -19,8 +19,8 @@ dependencies = [
     "banal (>=1.0.6,<2.0.0)",
     "orjson (>=3.10.18,<4.0.0)",
     "pydantic (>=2.11.7,<3.0.0)",
-    "fsspec (>2023.10,<2026)",
-    "s3fs (>2023.10,<2026)",
+    "fsspec (>2023.10,<2027)",
+    "s3fs (>2023.10,<2027)",
     "typer (>=0.17)",
     "pyaml (>=25.5.0,<26.0.0)",
     "cloudpickle (>=3.1.0,<4.0.0)",
@@ -28,7 +28,6 @@ dependencies = [
     "rich (>=10.0.0,<15.0.0)",
     "structlog (>=22.0.0,<26.0.0)",
     "rigour (>=1.0.0,<2.0.0)",
-    "httpx (>=0.28.1,<0.29.0)",
     "dateparser (>=1.2.2,<2.0.0)",
     "uuid7 (>=0.1.0,<0.2.0)",
     "tqdm (>=4.67.1,<5.0.0)",
@@ -37,9 +36,19 @@ dependencies = [
 [project.optional-dependencies]
 sql = ["sqlalchemy (>=2.0.36,<3.0.0)"]
 redis = ["redis (>=4.0.0)", "fakeredis (>=2.26.2,<3.0.0)"]
+api = ["fastapi (>=0.115.0,<1.0.0)", "uvicorn (>=0.34.0,<1.0.0)"]
 
 [project.scripts]
 anystore = "anystore.cli:cli"
+
+[project.entry-points."fsspec.specs"]
+sql = "anystore.fs.sql.SqlFileSystem"
+sqlite = "anystore.fs.sql.SqlFileSystem"
+mysql = "anystore.fs.sql.SqlFileSystem"
+postgresql = "anystore.fs.sql.SqlFileSystem"
+redis = "anystore.fs.redis.RedisFileSystem"
+"anystore+http" = "anystore.fs.api:ApiFileSystem"
+"anystore+https" = "anystore.fs.api:ApiFileSystem"
 
 [project.urls]
 Homepage = "https://docs.investigraph.dev/lib/anystore"
@@ -66,6 +75,7 @@ mkdocstrings-python = "^2.0.1"
 griffe-pydantic = "^1.1.6"
 mkdocs = "^1.6.1"
 mkdocs-typer2 = "^0.2.0"
+httpx = "^0.28.1"
 
 [build-system]
 requires = ["poetry-core"]

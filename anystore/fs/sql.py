@@ -1,0 +1,347 @@
+"""
+fsspec-compatible filesystem backed by a SQL database.
+"""
+
+from __future__ import annotations
+
+import io
+import threading
+from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING, Any
+
+from banal import ensure_dict
+from fsspec.spec import AbstractFileSystem
+
+from anystore.functools import weakref_cache as cache
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Connection, Engine
+
+TABLE_NAME = "anystore"
+POOL_SIZE = 5
+
+
+def _sa():
+    """Lazy import of sqlalchemy symbols."""
+    import sqlalchemy as sa
+    from sqlalchemy.dialects.mysql import insert as mysql_insert
+    from sqlalchemy.dialects.postgresql import insert as psql_insert
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+    from sqlalchemy.pool import StaticPool
+
+    return sa, StaticPool, sqlite_insert, mysql_insert, psql_insert
+
+
+@cache
+def _get_engine(url: str, **kwargs) -> Engine:
+    sa, StaticPool, _, _, _ = _sa()
+    if ":memory:" in url:
+        kwargs.setdefault("poolclass", StaticPool)
+        kwargs.setdefault("connect_args", {"check_same_thread": False})
+    elif "pool_size" not in kwargs:
+        kwargs["pool_size"] = POOL_SIZE
+    return sa.create_engine(url, **kwargs)
+
+
+def _get_insert(engine: Engine):
+    _, _, sqlite_insert, mysql_insert, psql_insert = _sa()
+    dialect = engine.dialect.name
+    if dialect == "sqlite":
+        return sqlite_insert
+    if dialect == "mysql":
+        return mysql_insert
+    if dialect in ("postgresql", "postgres"):
+        return psql_insert
+    raise RuntimeError(f"Unsupported database dialect: {dialect}")
+
+
+def _make_table(name: str, metadata) -> Any:
+    sa = _sa()[0]
+    return sa.Table(
+        name,
+        metadata,
+        sa.Column("key", sa.Unicode(), primary_key=True, unique=True, index=True),
+        sa.Column("value", sa.LargeBinary(), nullable=True),
+        sa.Column(
+            "timestamp",
+            sa.DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+        ),
+        sa.Column("ttl", sa.Integer(), nullable=True),
+    )
+
+
+class SqlFileSystem(AbstractFileSystem):
+    """A flat key-value filesystem stored in a SQL database.
+
+    Directories are emulated: any key containing ``/`` implicitly creates
+    parent "directories".
+
+    Parameters
+    ----------
+    url : str
+        SQLAlchemy connection URL (e.g. ``sqlite:///my.db``,
+        ``postgresql://user:pass@host/db``).
+    table : str
+        Table name.  Defaults to ``"anystore"``.
+    engine_kwargs : dict
+        Extra keyword arguments forwarded to ``create_engine``.
+    """
+
+    protocol = "sql"
+    root_marker = ""
+    cachable = False  # codespell:ignore-line
+
+    def __init__(
+        self,
+        url: str = "sqlite:///:memory:",
+        table: str = TABLE_NAME,
+        engine_kwargs: dict[str, Any] | None = None,
+        **storage_options,
+    ):
+        super().__init__(
+            url=url,
+            table=table,
+            engine_kwargs=engine_kwargs,
+            **storage_options,
+        )
+        sa = _sa()[0]
+        engine_kwargs = ensure_dict(engine_kwargs)
+        self._engine = _get_engine(url, **engine_kwargs)
+        self._insert_func = _get_insert(self._engine)
+        metadata = sa.MetaData()
+        self._table = _make_table(table, metadata)
+        metadata.create_all(self._engine, tables=[self._table], checkfirst=True)
+        self._local = threading.local()
+
+    @staticmethod
+    def _is_expired(row) -> bool:
+        """Check if a row with (…, timestamp, ttl) columns has expired."""
+        ts, ttl = row[-2], row[-1]
+        if ttl is None:
+            return False
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > ts + timedelta(seconds=ttl)
+
+    def _get_conn(self) -> Connection:
+        if not hasattr(self._local, "conn"):
+            self._local.conn = self._engine.connect()
+        return self._local.conn
+
+    # ------------------------------------------------------------------
+    # Required: ls
+    # ------------------------------------------------------------------
+
+    def ls(self, path: str, detail: bool = True, **kwargs) -> list:  # type: ignore[override]
+        sa = _sa()[0]
+        path = self._strip_protocol(path).strip("/")
+
+        conn = self._get_conn()
+        prefix = f"{path}/" if path else ""
+        stmt = sa.select(
+            self._table.c.key,
+            self._table.c.value,
+            self._table.c.timestamp,
+            self._table.c.ttl,
+        )
+        if prefix:
+            stmt = stmt.where(self._table.c.key.like(f"{prefix}%"))
+
+        rows = conn.execute(stmt).fetchall()
+
+        entries: dict[str, dict] = {}
+        for row in rows:
+            key, value, ts, ttl = row
+            if self._is_expired(row):
+                continue
+            key = key.strip("/")
+            if prefix:
+                relative = key[len(prefix) :]
+            else:
+                relative = key
+
+            if "/" in relative:
+                # this is a nested key – surface the immediate child dir
+                child = relative.split("/", 1)[0]
+                child_path = f"{prefix}{child}" if prefix else child
+                if child_path not in entries:
+                    entries[child_path] = {
+                        "name": child_path,
+                        "size": 0,
+                        "type": "directory",
+                    }
+            else:
+                entries[key] = {
+                    "name": key,
+                    "size": len(value) if value is not None else 0,
+                    "type": "file",
+                    "created": ts,
+                }
+
+        result = list(entries.values())
+        if not detail:
+            return [e["name"] for e in result]
+        return result
+
+    # ------------------------------------------------------------------
+    # info – override for efficiency (avoids ls on parent)
+    # ------------------------------------------------------------------
+
+    def info(self, path: str, **kwargs) -> dict:
+        sa = _sa()[0]
+        path = self._strip_protocol(path).strip("/")
+        if not path:
+            return {"name": "", "size": 0, "type": "directory"}
+
+        conn = self._get_conn()
+        stmt = sa.select(
+            self._table.c.key,
+            self._table.c.value,
+            self._table.c.timestamp,
+            self._table.c.ttl,
+        ).where(self._table.c.key == path)
+        row = conn.execute(stmt).first()
+        if row and not self._is_expired(row):
+            _, value, ts, _ = row
+            return {
+                "name": path,
+                "size": len(value) if value is not None else 0,
+                "type": "file",
+                "created": ts,
+            }
+
+        # Check if path is an implicit directory
+        prefix = f"{path}/"
+        stmt = (
+            sa.select(self._table.c.key)
+            .where(self._table.c.key.like(f"{prefix}%"))
+            .limit(1)
+        )
+        row = conn.execute(stmt).first()
+        if row:
+            return {"name": path, "size": 0, "type": "directory"}
+
+        raise FileNotFoundError(path)
+
+    # ------------------------------------------------------------------
+    # _open – return a file-like object
+    # ------------------------------------------------------------------
+
+    def _open(  # type: ignore[override]
+        self,
+        path: str,
+        mode: str = "rb",
+        **kwargs,
+    ) -> io.BytesIO | SqlFileWriter:
+        sa = _sa()[0]
+        path = self._strip_protocol(path).strip("/")
+        if "r" in mode:
+            conn = self._get_conn()
+            stmt = sa.select(
+                self._table.c.value, self._table.c.timestamp, self._table.c.ttl
+            ).where(self._table.c.key == path)
+            row = conn.execute(stmt).first()
+            if row is None or self._is_expired(row):
+                raise FileNotFoundError(path)
+            data = row[0] or b""
+            return io.BytesIO(data)
+        else:
+            return SqlFileWriter(self, path, ttl=kwargs.get("ttl"))
+
+    # ------------------------------------------------------------------
+    # pipe_file / cat_file – efficient bulk read/write
+    # ------------------------------------------------------------------
+
+    def cat_file(self, path: str, start=None, end=None, **kwargs) -> bytes:
+        sa = _sa()[0]
+        path = self._strip_protocol(path).strip("/")
+        conn = self._get_conn()
+        stmt = sa.select(
+            self._table.c.value, self._table.c.timestamp, self._table.c.ttl
+        ).where(self._table.c.key == path)
+        row = conn.execute(stmt).first()
+        if row is None or self._is_expired(row):
+            raise FileNotFoundError(path)
+        data = row[0] or b""
+        if start is not None or end is not None:
+            data = data[start:end]
+        return data
+
+    def pipe_file(self, path: str, value: bytes, mode="overwrite", **kwargs) -> None:
+        path = self._strip_protocol(path).strip("/")
+        if mode == "create" and self.exists(path):
+            raise FileExistsError(path)
+        self._upsert(path, value)
+
+    def _upsert(self, key: str, value: bytes, ttl: int | None = None) -> None:
+        sa = _sa()[0]
+        conn = self._get_conn()
+        now = datetime.now(timezone.utc)
+        stmt = sa.insert(self._table).values(
+            key=key, value=value, ttl=ttl, timestamp=now
+        )
+        try:
+            conn.execute(stmt)
+        except Exception:
+            stmt = (
+                sa.update(self._table)
+                .where(self._table.c.key == key)
+                .values(value=value, ttl=ttl, timestamp=now)
+            )
+            conn.execute(stmt)
+        conn.commit()
+
+    # ------------------------------------------------------------------
+    # rm_file
+    # ------------------------------------------------------------------
+
+    def rm_file(self, path: str) -> None:
+        sa = _sa()[0]
+        path = self._strip_protocol(path).strip("/")
+        conn = self._get_conn()
+        stmt = sa.delete(self._table).where(self._table.c.key == path)
+        conn.execute(stmt)
+        conn.commit()
+
+    def _rm(self, path: str) -> None:
+        self.rm_file(path)
+
+    # ------------------------------------------------------------------
+    # mkdir / makedirs – no-op for flat store
+    # ------------------------------------------------------------------
+
+    def mkdir(self, path: str, create_parents: bool = True, **kwargs) -> None:
+        pass
+
+    def makedirs(self, path: str, exist_ok: bool = False) -> None:
+        pass
+
+    # ------------------------------------------------------------------
+    # Protocol helpers
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def _strip_protocol(cls, path: str) -> str:
+        if path.startswith("sql://"):
+            path = path[len("sql://") :]
+        return path.strip("/")
+
+    def created(self, path: str) -> datetime | None:
+        info = self.info(path)
+        return info.get("created")
+
+
+class SqlFileWriter(io.BytesIO):
+    """Write buffer that flushes to SQL on close."""
+
+    def __init__(self, fs: SqlFileSystem, path: str, ttl: int | None = None):
+        super().__init__()
+        self._fs = fs
+        self._path = path
+        self._ttl = ttl
+
+    def close(self) -> None:
+        if not self.closed:
+            self._fs._upsert(self._path, self.getvalue(), ttl=self._ttl)
+        super().close()

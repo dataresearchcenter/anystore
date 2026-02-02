@@ -3,8 +3,7 @@ from datetime import datetime
 from typing import Generator
 
 from anystore.functools import weakref_cache as cache
-from anystore.store import get_store
-from anystore.store.base import BaseStore
+from anystore.store import Store, get_store
 from anystore.types import Uri
 
 
@@ -18,7 +17,7 @@ class Tags:
     deletion by key filter criterion and a `touch` contextmanager.
     """
 
-    def __init__(self, store: BaseStore) -> None:
+    def __init__(self, store: Store) -> None:
         self.store = store
         self.get = store.get
         self.put = store.put

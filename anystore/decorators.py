@@ -33,18 +33,18 @@ from structlog import BoundLogger
 
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
-from anystore.serialize import Mode
+from anystore.logic.serialize import Mode
 from anystore.settings import Settings
-from anystore.store import BaseStore, get_store
-from anystore.util import make_signature_key
+from anystore.store import Store, get_store
+from anystore.util.checksum import make_signature_key
 
 log = get_logger(__name__)
 settings = Settings()
 
 
-def _setup_decorator(**kwargs) -> tuple[Callable, BaseStore]:
+def _setup_decorator(**kwargs) -> tuple[Callable, Store]:
     key_func: Callable = kwargs.pop("key_func", None) or make_signature_key
-    store: BaseStore = kwargs.pop("store", None) or get_store(**kwargs)
+    store: Store = kwargs.pop("store", None) or get_store(**kwargs)
     store = store.model_copy()
     store.default_ttl = kwargs.pop("ttl", None) or store.default_ttl
     for key, value in kwargs.items():
@@ -57,7 +57,7 @@ def _setup_decorator(**kwargs) -> tuple[Callable, BaseStore]:
     return key_func, store
 
 
-def _handle_result(key: str, res: Any, store: BaseStore) -> Any:
+def _handle_result(key: str, res: Any, store: Store) -> Any:
     value = res
     if store.serialization_func is not None:
         value = store.serialization_func(res)
@@ -70,7 +70,7 @@ def _handle_result(key: str, res: Any, store: BaseStore) -> Any:
 
 def anycache(
     func: Callable[..., Any] | None = None,
-    store: BaseStore | None = None,
+    store: Store | None = None,
     model: Type[BaseModel] | None = None,
     key_func: Callable[..., str | None] | None = None,
     serialization_mode: Mode | None = "auto",
@@ -99,7 +99,7 @@ def anycache(
         will not be cached (this can be used to dynamically disable caching
         based on function input)
 
-    See [`anystore.serialize`][anystore.serialize] for serialization reference.
+    See [`anystore.logic.serialize`][anystore.logic.serialize] for serialization reference.
 
     Args:
         func: The function to wrap

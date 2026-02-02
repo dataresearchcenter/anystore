@@ -33,6 +33,9 @@ settings = Settings()
 
 
 def get_log_level(level: str | int | None = None) -> "_Level":
+    if not level:
+        if settings.debug:
+            level = logging.DEBUG
     log_level = level or settings.log_level
     if isinstance(log_level, str):
         log_level = getattr(logging, log_level.upper())

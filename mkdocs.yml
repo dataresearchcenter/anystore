@@ -12,17 +12,26 @@ nav:
     - configuration.md
     - serialization.md
   - Reference:
-      - anystore.io: reference/io.md
-      - anystore.store: reference/store.md
-      - anystore.store.virtual: reference/virtual.md
-      - anystore.tags: reference/tags.md
-      - anystore.model: reference/model.md
+    - CLI:
       - anystore.cli: reference/cli.md
-      - anystore.serialize: reference/serialize.md
+    - I/O:
+      - anystore.io: reference/io.md
       - anystore.decorators: reference/decorators.md
-      - anystore.settings: reference/settings.md
-      - anystore.lock: reference/lock.md
+    - Store:
+      - anystore.store: reference/store.md
+      - anystore.store.resource: reference/resource.md
+    - Interfaces:
+      - anystore.interface.tags: reference/tags.md
+      - anystore.interface.lock: reference/lock.md
+      - anystore.interface.queue: reference/queue.md
+    - Model:
+      - anystore.model: reference/model.md
+    - Logic:
+      - anystore.logic.serialize: reference/serialize.md
+      - anystore.logic.virtual: reference/virtual.md
+    - Utilities:
       - anystore.util: reference/util.md
+      - anystore.settings: reference/settings.md
 theme:
   name: material
   logo: https://cdn.investigativedata.org/style/logos/darc/svg/DARC-Logo-RGB-Horizontal-Neg.svg

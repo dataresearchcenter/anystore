@@ -34,5 +34,8 @@ The goal of `anystore` is to provide a simple high-level interface that works th
 - [x] All file-like backends supported by `fsspec` ([here](https://filesystem-spec.readthedocs.io/en/latest/api.html#built-in-implementations) and [here](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations))
 - [x] Sql via [sqlalchemy](https://www.sqlalchemy.org/) such as sqlite, postgres, mysql
 - [x] Redis compatible (redis or e.g. [kvrocks](https://kvrocks.apache.org/))
-- [x] ZipFile: Use a compressed archive as a store backend
 - [x] A simple in-memory implementation
+
+## Shared utilities
+
+As well this package contains a lot of [useful helpers](./reference/util.md)

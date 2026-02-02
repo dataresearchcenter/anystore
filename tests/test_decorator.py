@@ -7,7 +7,7 @@ import pytest
 from anystore.decorators import anycache, async_anycache, error_handler
 from anystore.model import BaseModel
 from anystore.store import get_store
-from anystore.util import make_signature_key
+from anystore.util.checksum import make_signature_key
 
 
 def test_decorator(tmp_path):

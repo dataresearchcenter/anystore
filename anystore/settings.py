@@ -5,7 +5,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings as _BaseSettings
 from pydantic_settings import SettingsConfigDict
 
-from anystore.serialize import Mode
+from anystore.logic.serialize import Mode
 
 
 class BaseSettings(_BaseSettings):
