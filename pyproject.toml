@@ -42,6 +42,8 @@ api = ["fastapi (>=0.115.0,<1.0.0)", "uvicorn (>=0.34.0,<1.0.0)"]
 anystore = "anystore.cli:cli"
 
 [project.entry-points."fsspec.specs"]
+file = "anystore.fs.local.AnyLocalFileSystem"
+local = "anystore.fs.local.AnyLocalFileSystem"
 sql = "anystore.fs.sql.SqlFileSystem"
 sqlite = "anystore.fs.sql.SqlFileSystem"
 mysql = "anystore.fs.sql.SqlFileSystem"

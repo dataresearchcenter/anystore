@@ -15,10 +15,11 @@ from s3fs.core import S3FileSystem
 from anystore.api import create_app
 from anystore.exceptions import DoesNotExist
 from anystore.fs.api import ApiFileSystem
+from anystore.fs.local import AnyLocalFileSystem
 from anystore.fs.redis import RedisFileSystem
 from anystore.fs.sql import SqlFileSystem
 from anystore.io import smart_read
-from anystore.logic.uri import ensure_uri, join_uri, uri_to_path
+from anystore.logic.uri import join_uri
 from anystore.model import StoreModel
 from anystore.store import Store, get_store
 from anystore.util.checksum import DEFAULT_HASH_ALGORITHM
@@ -282,8 +283,9 @@ def test_store_initialize(tmp_path, fixtures_path):
     assert isinstance(get_store()._fs, S3FileSystem)  # pytest env var ANYSTORE_URI
     assert isinstance(get_store("memory://")._fs, MemoryFileSystem)
     assert isinstance(get_store("./data")._fs, LocalFileSystem)
-    assert isinstance(get_store("/data")._fs, LocalFileSystem)
-    assert isinstance(get_store("file:///data")._fs, LocalFileSystem)
+    assert isinstance(get_store("./data")._fs, AnyLocalFileSystem)
+    assert isinstance(get_store("/data")._fs, AnyLocalFileSystem)
+    assert isinstance(get_store("file:///data")._fs, AnyLocalFileSystem)
     assert isinstance(get_store("s3://bucket")._fs, S3FileSystem)
     assert isinstance(get_store("http://example.org/files")._fs, HTTPFileSystem)
     assert isinstance(get_store("redis://localhost")._fs, RedisFileSystem)

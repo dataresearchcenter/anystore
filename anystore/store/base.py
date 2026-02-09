@@ -474,7 +474,9 @@ class Store(StoreModel, Generic[V, Raise]):
         else:
             base = self._keys.key_prefix
 
-        if glob:
+        if hasattr(self._fs, "iter_find"):
+            keys = self._fs.iter_find(base, glob=glob)
+        elif glob:
             keys = self._fs.glob(f"{base}/{glob}")
         else:
             try:
