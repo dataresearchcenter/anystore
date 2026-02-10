@@ -199,6 +199,14 @@ def smart_read(uri: Uri, mode: str | None = DEFAULT_MODE, **kwargs: Any) -> AnyS
         return fh.read()
 
 
-def open_virtual(uri: "TUri", **kwargs) -> ContextManager[VirtualIO]:
-    """Wrapper for [UriResource.local_open][anystore.store.resource.UriResource.local_open]"""
-    return UriResource(uri, **kwargs).local_open()
+def open_virtual(
+    uri: "TUri", algorithm: str | None = None, **kwargs
+) -> ContextManager[VirtualIO]:
+    """Wrapper for [UriResource.local_open][anystore.store.resource.UriResource.local_open]
+
+    Args:
+        uri: string or path-like key uri to open
+        algorithm: Checksum algorithm from `hashlib` (default: "sha1")
+        **kwargs: pass through storage-specific options
+    """
+    return UriResource(uri, **kwargs).local_open(algorithm=algorithm)

@@ -641,7 +641,11 @@ class Store(StoreModel, Generic[V, Raise]):
                 tmp.__exit__(None, None, None)
 
     @contextlib.contextmanager
-    def local_open(self, key: Uri) -> Generator[VirtualIO, None, None]:
+    def local_open(
+        self,
+        key: Uri,
+        algorithm: str | None = DEFAULT_HASH_ALGORITHM,
+    ) -> Generator[VirtualIO, None, None]:
         """
         Download a file for temporary local processing and get its checksum and
         an open handler. If the file itself is already on the local filesystem,
@@ -655,6 +659,10 @@ class Store(StoreModel, Generic[V, Raise]):
                 smart_write(uri=f"./local/{fh.checksum}", fh.read())
             ```
 
+        Args:
+            key: Key relative to store base uri
+            algorithm: Checksum algorithm from `hashlib` (default: "sha1")
+
         Yields:
             A generic file-handler like context object. It has 3 extra attributes:
                 - `checksum`
@@ -663,6 +671,6 @@ class Store(StoreModel, Generic[V, Raise]):
         """
         with self.local_path(key) as path:
             with path.open("rb") as fh:
-                checksum = make_checksum(fh)
+                checksum = make_checksum(fh, algorithm or DEFAULT_HASH_ALGORITHM)
                 fh.seek(0)
                 yield VirtualIO(fh, checksum=checksum, path=path, info=self.info(key))

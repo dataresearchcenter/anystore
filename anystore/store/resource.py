@@ -156,7 +156,7 @@ class UriResource(UriHandler):
         """
         return self.store.local_path(self.key)
 
-    def local_open(self) -> ContextManager[VirtualIO]:
+    def local_open(self, algorithm: str | None = None) -> ContextManager[VirtualIO]:
         """
         Download a file for temporary local processing and get its checksum and
         an open handler. If the file itself is already on the local filesystem,
@@ -170,10 +170,13 @@ class UriResource(UriHandler):
                 smart_write(uri=f"./local/{fh.checksum}", fh.read())
             ```
 
+        Args:
+            algorithm: Checksum algorithm from `hashlib` (default: "sha1")
+
         Yields:
             A generic file-handler like context object. It has 3 extra attributes:
                 - `checksum`
                 - the absolute temporary `path` as a `pathlib.Path` object
                 - [`info`][anystore.model.Stats] object
         """
-        return self.store.local_open(self.key)
+        return self.store.local_open(self.key, algorithm=algorithm)

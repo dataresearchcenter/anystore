@@ -64,7 +64,9 @@ def make_data_checksum(data: Any, algorithm: str = DEFAULT_HASH_ALGORITHM) -> st
     return make_checksum(BytesIO(data), algorithm)
 
 
-def make_signature_key(*args: Any, **kwargs: Any) -> str:
+def make_signature_key(
+    *args: Any, algorithm: str = DEFAULT_HASH_ALGORITHM, **kwargs: Any
+) -> str:
     """
     Calculate data checksum for arbitrary input (used for caching function
     calls)
@@ -75,15 +77,16 @@ def make_signature_key(*args: Any, **kwargs: Any) -> str:
 
     Args:
         *args: Arbitrary input arguments
+        algorithm: Algorithm from `hashlib` to use, default: sha1
         **kwargs: Arbitrary input keyword arguments
 
     Returns:
-        Generated sha1 checksum
+        Generated checksum
     """
-    return make_data_checksum((args, kwargs))
+    return make_data_checksum((args, kwargs), algorithm)
 
 
-def make_uri_key(uri: Uri) -> str:
+def make_uri_key(uri: Uri, algorithm: str = DEFAULT_HASH_ALGORITHM) -> str:
     """
     Make a verbose key usable for caching. It strips the scheme, uses host and
     path as key parts and creates a checksum for the uri (including fragments,
@@ -93,7 +96,11 @@ def make_uri_key(uri: Uri) -> str:
     Examples:
         >>> make_uri_key("https://example.org/foo/bar#fragment?a=b&c")
         "example.org/foo/bar/ecdb319854a7b223d72e819949ed37328fe034a0"
+
+    Args:
+        uri: Input URI
+        algorithm: Algorithm from `hashlib` to use, default: sha1
     """
     uri = str(uri)
     parsed = urlparse(uri)
-    return join_relpaths(parsed.netloc, parsed.path, make_data_checksum(uri))
+    return join_relpaths(parsed.netloc, parsed.path, make_data_checksum(uri, algorithm))
