@@ -9,7 +9,7 @@ from anystore.logic.constants import CHUNK_SIZE
 from anystore.logic.uri import join_relpaths
 from anystore.types import Uri
 
-DEFAULT_HASH_ALGORITHM = "sha1"
+DEFAULT_HASH_ALGORITHM = "sha256"
 
 
 def make_checksum(io: BinaryIO, algorithm: str = DEFAULT_HASH_ALGORITHM) -> str:

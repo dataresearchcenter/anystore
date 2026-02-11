@@ -65,12 +65,12 @@ def guess_mimetype(key: Uri) -> str:
     return normalize_mimetype(mtype)
 
 
-def mask_uri(uri: str) -> str:
+def mask_uri(uri: Uri) -> str:
     """
     Replace username and password in a URI with asterisks
     """
     pattern = r"([a-zA-Z][a-zA-Z0-9+.-]*)://([^:]+):([^@]+)@"
-    return re.sub(pattern, r"\1://***:***@", uri)
+    return re.sub(pattern, r"\1://***:***@", str(uri))
 
 
 def ensure_uuid(uuid: str | None = None) -> str:
