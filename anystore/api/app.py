@@ -13,7 +13,7 @@ async def _not_found_handler(_request: Request, exc: Exception) -> JSONResponse:
 
 
 def create_app(store: Store | None = None) -> FastAPI:
-    app = FastAPI(docs_url=None, redoc_url="/")
+    app = FastAPI(docs_url=None, redoc_url=None)
 
     if store is None:
         store = get_store()

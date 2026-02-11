@@ -80,7 +80,7 @@ def test_api_head_checksum(populated_client):
 
 
 def test_api_list_keys(populated_client):
-    res = populated_client.post("/_list")
+    res = populated_client.get("/?keys=true")
     assert res.status_code == 200
     keys = [k for k in res.text.splitlines() if k]
     assert "hello" in keys
@@ -88,7 +88,7 @@ def test_api_list_keys(populated_client):
 
 
 def test_api_list_keys_prefix(populated_client):
-    res = populated_client.post("/_list?prefix=foo")
+    res = populated_client.get("/foo?keys=true")
     assert res.status_code == 200
     keys = [k for k in res.text.splitlines() if k]
     assert "foo/bar" in keys

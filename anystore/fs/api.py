@@ -89,11 +89,10 @@ class ApiFileSystem(HTTPFileSystem):
         url = self._strip_protocol(url)
         base = self._base_url(url)
         path = url[len(base) :].strip("/")
-        params = {}
-        if path:
-            params["prefix"] = path
+        params = {"keys": "true"}
+        url_path = f"{base}/{path}" if path else base
         session = await self.set_session()
-        async with session.post(base + "/_list", params=params, **self.kwargs) as resp:
+        async with session.get(url_path, params=params, **self.kwargs) as resp:
             resp.raise_for_status()
             text = await resp.text()
             keys = [k for k in text.splitlines() if k]
