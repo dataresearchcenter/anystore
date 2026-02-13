@@ -31,6 +31,7 @@ dependencies = [
     "dateparser (>=1.2.2,<2.0.0)",
     "uuid7 (>=0.1.0,<0.2.0)",
     "tqdm (>=4.67.1,<5.0.0)",
+    "imohash (>=1.1.0,<2.0.0)",
 ]
 
 [project.optional-dependencies]

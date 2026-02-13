@@ -72,6 +72,13 @@ class Info(BaseModel):
     def coerce_timestamp(cls, v: Any) -> datetime | None:
         return _ensure_datetime(v)
 
+    @field_validator("size", mode="before")
+    @classmethod
+    def ensure_size(cls, v: Any) -> int:
+        if v is None:
+            return 0
+        return v
+
     @model_validator(mode="after")
     def ensure_timestamp_fallback(self) -> Self:
         """Fall back created_at <-> updated_at."""

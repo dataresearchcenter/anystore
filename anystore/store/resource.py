@@ -14,12 +14,14 @@ from functools import cached_property
 from pathlib import Path
 from typing import IO, Any, Callable, ContextManager, Generator
 
+from anystore.logic.io import _is_seekable
 from anystore.logic.serialize import Mode
 from anystore.logic.uri import CURRENT, UriHandler
 from anystore.logic.virtual import VirtualIO
 from anystore.model import Stats
 from anystore.store.base import Store
 from anystore.types import Model, Uri
+from anystore.util.checksum import make_fast_hash
 
 
 class UriResource(UriHandler):
@@ -49,6 +51,31 @@ class UriResource(UriHandler):
     @cached_property
     def name(self) -> str:
         return Path(self.uri).name
+
+    @cached_property
+    def cache_key(self) -> str | None:
+        """Check for anything suitable for change detection.
+
+        Uses ETag or Last-Modified from the backend if available,
+        otherwise falls back to imohash (sampling-based fast hash).
+        """
+        if not self.exists():
+            return None
+        info = {k.lower(): v for k, v in self._fs.info(self.uri).items()}
+        etag = info.get("etag")
+        if etag:
+            etag = etag.strip('"')
+            return f"etag/{etag}"
+        last_modified = self.info().updated_at
+        if last_modified:
+            return f"last-modified/{last_modified.timestamp()}"
+
+        try:
+            with self.open(block_size=16 * 1024) as io:
+                if _is_seekable(io):
+                    return f"imohash/{make_fast_hash(io)}"
+        except ValueError:
+            pass
 
     def info(self) -> Stats:
         return self.store.info(self.key)
