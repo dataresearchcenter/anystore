@@ -64,7 +64,12 @@ def dict_merge(d1: dict[Any, Any], d2: dict[Any, Any]) -> dict[Any, Any]:
                 value = ensure_dict(value)
                 d1[key] = dict_merge(d1.get(key, {}), value)
             elif is_listish(value):
-                d1[key] = ensure_list(d1.get(key)) + ensure_list(value)
+                merged = ensure_list(d1.get(key)) + ensure_list(value)
+                seen: list[Any] = []
+                for item in merged:
+                    if item not in seen:
+                        seen.append(item)
+                d1[key] = seen
             else:
                 d1[key] = value
     return d1
