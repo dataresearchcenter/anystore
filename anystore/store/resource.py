@@ -66,10 +66,6 @@ class UriResource(UriHandler):
         if etag:
             etag = etag.strip('"')
             return f"etag/{etag}"
-        last_modified = self.info().updated_at
-        if last_modified:
-            return f"last-modified/{last_modified.timestamp()}"
-
         try:
             with self.open(block_size=16 * 1024) as io:
                 if _is_seekable(io):

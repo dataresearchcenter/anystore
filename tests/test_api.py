@@ -75,6 +75,13 @@ def test_api_head_checksum(populated_client):
     assert res.status_code == 200
     assert "x-anystore-checksum" in res.headers
     assert (
+        res.headers["x-anystore-checksum"]
+        == "486ea46224d1bb4fb680f34f7c9ad96a8f24ec88be73ea8e5a6c65260e9cb8a7"
+    )
+    res = populated_client.head("/hello?checksum=true&algorithm=sha1")
+    assert res.status_code == 200
+    assert "x-anystore-checksum" in res.headers
+    assert (
         res.headers["x-anystore-checksum"] == "7c211433f02071597741e6ff5a8ea34789abbf43"
     )
 

@@ -105,7 +105,10 @@ def test_core_resource_checksum(tmp_uri):
     lorem = smart_read(FIXTURES_PATH / "lorem.txt")
     r = _make(tmp_uri, "cksum.txt")
     r.put(lorem)
-    sha1 = r.checksum()
+    sha265 = r.checksum()
+    assert isinstance(sha265, str)
+    assert len(sha265) == 64
+    sha1 = r.checksum(algorithm="sha1")
     assert isinstance(sha1, str)
     assert len(sha1) == 40
     md5 = r.checksum(algorithm="md5")
@@ -162,7 +165,7 @@ def test_core_resource_local_open(fixtures_path):
     with r.local_open() as fh:
         assert isinstance(fh, VirtualIO)
         assert fh.path.exists()
-        assert len(fh.checksum) == 40
+        assert len(fh.checksum) == 64
         assert fh.read() == r.get(serialization_mode="raw")
     assert not fh.path.exists()
 
@@ -171,7 +174,7 @@ def test_core_resource_local_open(fixtures_path):
     with r.local_open() as fh:
         assert isinstance(fh, VirtualIO)
         assert fh.path.exists()
-        assert len(fh.checksum) == 40
+        assert len(fh.checksum) == 64
         assert fh.read() == r.get(serialization_mode="raw")
     assert fh.path.exists()
 

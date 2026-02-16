@@ -9,7 +9,10 @@ from anystore.store.virtual import get_virtual_store
 def test_virtual(fixtures_path):
     uri = "http://localhost:8000/lorem.txt"
     with open_virtual(uri) as fh:
-        assert fh.checksum == "ed3141878ed32d8a1d583e7ce7de323118b933d3"
+        assert (
+            fh.checksum
+            == "edd1eae3d9703439752a14e742afd563739988fe057ff10843cc61542065e3b1"
+        )
         assert fh.read().startswith(b"Lorem ipsum")
         assert isinstance(fh.path, Path)
         assert str(fh.path).startswith("/tmp")
@@ -26,7 +29,10 @@ def test_virtual(fixtures_path):
     # actual local file
     uri = fixtures_path / "lorem.txt"
     with open_virtual(uri) as fh:
-        assert fh.checksum == "ed3141878ed32d8a1d583e7ce7de323118b933d3"
+        assert (
+            fh.checksum
+            == "edd1eae3d9703439752a14e742afd563739988fe057ff10843cc61542065e3b1"
+        )
         assert fh.read().startswith(b"Lorem ipsum")
         assert isinstance(fh.path, Path)
         assert fh.path.exists()

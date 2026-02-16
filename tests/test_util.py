@@ -82,16 +82,27 @@ def test_util_uris():
 
 
 def test_util_checksum(tmp_path, fixtures_path):
-    assert make_data_checksum("stable") == "4fbacc2fa0ffdbb11bf1ad6925b886ebd08dd15f"
-    assert len(make_data_checksum("a")) == 40
-    assert len(make_data_checksum({"foo": "bar"})) == 40
-    assert len(make_data_checksum(True)) == 40
+    assert (
+        make_data_checksum("stable", algorithm="sha1")
+        == "4fbacc2fa0ffdbb11bf1ad6925b886ebd08dd15f"
+    )
+    assert (
+        make_data_checksum("stable")
+        == "f379ccb92b9116442dc65bdc35648a85d3786b34779db7f704a901fa07b00cb6"
+    )
+    assert len(make_data_checksum("a", algorithm="sha1")) == 40
+    assert len(make_data_checksum("a")) == 64
+    assert len(make_data_checksum({"foo": "bar"})) == 64
+    assert len(make_data_checksum(True)) == 64
     assert make_data_checksum(["a", 1]) != make_data_checksum(["a", "1"])
 
     os.system(f"sha1sum {fixtures_path / 'lorem.txt'} > {tmp_path / 'ch'}")
     sys_ch = smart_read(tmp_path / "ch", mode="r").split()[0]
     with open(fixtures_path / "lorem.txt", "rb") as i:
         ch = make_checksum(i)
+    assert ch == "edd1eae3d9703439752a14e742afd563739988fe057ff10843cc61542065e3b1"
+    with open(fixtures_path / "lorem.txt", "rb") as i:
+        ch = make_checksum(i, algorithm="sha1")
     assert ch == "ed3141878ed32d8a1d583e7ce7de323118b933d3"
     assert sys_ch == ch
 
@@ -154,7 +165,7 @@ def test_util_make_uri_key():
     # ensure stability
     assert (
         make_uri_key("https://example.org/foo/bar#fragment?a=b&c")
-        == "example.org/foo/bar/ecdb319854a7b223d72e819949ed37328fe034a0"
+        == "example.org/foo/bar/440a5ce5231c534bd3f1e4fbf9d053e3d9c9913b8d5b76199d54ebeace312740"
     )
 
 
