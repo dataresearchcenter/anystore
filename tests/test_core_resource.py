@@ -176,6 +176,29 @@ def test_core_resource_local_open(fixtures_path):
     assert fh.path.exists()
 
 
+def test_core_resource_cache_key(tmp_uri):
+    # nonexistent resource returns None
+    r = _make(tmp_uri, "no_such")
+    assert r.cache_key is None
+
+    # local file falls back to imohash
+    r = _make(tmp_uri, "cached.txt")
+    r.put("hello world")
+    key = r.cache_key
+    assert key is not None
+    assert key.startswith("imohash/")
+
+    # same content produces the same key
+    r2 = _make(tmp_uri, "cached2.txt")
+    r2.put("hello world")
+    assert r2.cache_key == key
+
+    # different content produces a different key
+    r3 = _make(tmp_uri, "cached3.txt")
+    r3.put("different content")
+    assert r3.cache_key != key
+
+
 def test_core_resource_uri_chain():
     r = UriResource("https://example.org/foo")
     child = r / "bar.txt"

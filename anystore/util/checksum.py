@@ -1,7 +1,7 @@
 import hashlib
 from io import BytesIO
 from typing import Any, BinaryIO
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from banal.cache import bytes_iter
 
@@ -9,7 +9,7 @@ from anystore.logic.constants import CHUNK_SIZE
 from anystore.logic.uri import join_relpaths
 from anystore.types import Uri
 
-DEFAULT_HASH_ALGORITHM = "sha1"
+DEFAULT_HASH_ALGORITHM = "sha256"
 
 
 def make_checksum(io: BinaryIO, algorithm: str = DEFAULT_HASH_ALGORITHM) -> str:
@@ -101,6 +101,21 @@ def make_uri_key(uri: Uri, algorithm: str = DEFAULT_HASH_ALGORITHM) -> str:
         uri: Input URI
         algorithm: Algorithm from `hashlib` to use, default: sha1
     """
-    uri = str(uri)
+    uri = unquote(str(uri))
     parsed = urlparse(uri)
-    return join_relpaths(parsed.netloc, parsed.path, make_data_checksum(uri, algorithm))
+    return join_relpaths(
+        parsed.netloc, unquote(parsed.path), make_data_checksum(uri, algorithm)
+    )
+
+
+def make_fast_hash(io: BinaryIO) -> str:
+    """
+    Make a fast checksum for comparison. Don't use this for real data integrity
+    or cryptographic checks.
+
+    Uses imohash: samples the beginning, middle and end of the stream and
+    hashes those samples with MurmurHash3-128.
+    """
+    from imohash import hashfileobject
+
+    return hashfileobject(io, hexdigest=True)
