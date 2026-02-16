@@ -1,4 +1,3 @@
-import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -132,7 +131,6 @@ def _test_store(fixtures_path, uri: str) -> bool:
         time.sleep(1)
         assert store.get("expired", raise_on_nonexist=False) is None
     # global store ttl
-    store.default_ttl = 1
     store.put("expired", 1)
     assert store.get("expired") == 1
     time.sleep(1)
@@ -142,10 +140,10 @@ def _test_store(fixtures_path, uri: str) -> bool:
     assert DEFAULT_HASH_ALGORITHM == "sha256"
     md5sum = "6d484beb4162b026abc7cfea019acbd1"
     sha1sum = "ed3141878ed32d8a1d583e7ce7de323118b933d3"
-    sha265sum = "edd1eae3d9703439752a14e742afd563739988fe057ff10843cc61542065e3b1"
+    sha256sum = "edd1eae3d9703439752a14e742afd563739988fe057ff10843cc61542065e3b1"
     lorem = smart_read(fixtures_path / "lorem.txt")
     store.put("data.txt", lorem)
-    assert store.checksum("data.txt") == sha265sum
+    assert store.checksum("data.txt") == sha256sum
     assert store.checksum("data.txt", algorithm="sha1") == sha1sum
     assert store.checksum("data.txt", "md5") == md5sum
     assert store.info("data.txt").mimetype == "text/plain"

@@ -105,9 +105,9 @@ def test_core_resource_checksum(tmp_uri):
     lorem = smart_read(FIXTURES_PATH / "lorem.txt")
     r = _make(tmp_uri, "cksum.txt")
     r.put(lorem)
-    sha265 = r.checksum()
-    assert isinstance(sha265, str)
-    assert len(sha265) == 64
+    sha256sum = r.checksum()
+    assert isinstance(sha256sum, str)
+    assert len(sha256sum) == 64
     sha1 = r.checksum(algorithm="sha1")
     assert isinstance(sha1, str)
     assert len(sha1) == 40
