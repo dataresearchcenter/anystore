@@ -131,6 +131,7 @@ def _test_store(fixtures_path, uri: str) -> bool:
         time.sleep(1)
         assert store.get("expired", raise_on_nonexist=False) is None
     # global store ttl
+    store.default_ttl = 1
     store.put("expired", 1)
     assert store.get("expired") == 1
     time.sleep(1)
