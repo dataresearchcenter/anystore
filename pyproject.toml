@@ -79,7 +79,7 @@ griffe-pydantic = "^1.1.6"
 mkdocs = "^1.6.1"
 mkdocs-typer2 = "^0.2.0"
 httpx = "^0.28.1"
-griffe = "<2"
+griffe = "<3"
 
 [build-system]
 requires = ["poetry-core"]
