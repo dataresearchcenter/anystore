@@ -72,7 +72,7 @@ ipdb = "^0.13.13"
 bump2version = "^1.0.1"
 moto = {extras = ["server"], version = "^5.1.20"}
 pytest-asyncio = ">=0.23.8,<1.4.0"
-mkdocs-material = "^9.7.1"
+mkdocs-material = "^9.7.2"
 mkdocs-autorefs = "^1.4.4"
 mkdocstrings-python = "^2.0.1"
 griffe-pydantic = "^1.1.6"
