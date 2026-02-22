@@ -7,12 +7,11 @@ from __future__ import annotations
 import io
 import threading
 from datetime import datetime, timedelta, timezone
+from functools import cache
 from typing import TYPE_CHECKING, Any
 
 from banal import ensure_dict
 from fsspec.spec import AbstractFileSystem
-
-from anystore.functools import weakref_cache as cache
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Connection, Engine

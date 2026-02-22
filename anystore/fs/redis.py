@@ -5,11 +5,11 @@ fsspec-compatible filesystem backed by Redis (or fakeredis / Kvrocks).
 from __future__ import annotations
 
 import io
+from functools import cache
 from typing import TYPE_CHECKING
 
 from fsspec.spec import AbstractFileSystem
 
-from anystore.functools import weakref_cache as cache
 from anystore.logging import get_logger
 from anystore.settings import Settings
 from anystore.util.misc import mask_uri

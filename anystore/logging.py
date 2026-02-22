@@ -1,6 +1,7 @@
 import functools
 import logging
 import sys
+from functools import cache
 from logging import Filter, LogRecord
 from typing import TYPE_CHECKING, Any, Dict, List
 
@@ -22,7 +23,6 @@ from structlog.stdlib import (
 )
 from structlog.stdlib import get_logger as get_raw_logger
 
-from anystore.functools import weakref_cache as cache
 from anystore.settings import Settings
 
 if TYPE_CHECKING:

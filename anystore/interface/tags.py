@@ -1,8 +1,8 @@
 import contextlib
 from datetime import datetime
+from functools import cache
 from typing import Generator
 
-from anystore.functools import weakref_cache as cache
 from anystore.store import Store, get_store
 from anystore.types import Uri
 

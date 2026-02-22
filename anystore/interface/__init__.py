@@ -1,4 +1,5 @@
-from anystore.functools import weakref_cache as cache
+from functools import cache
+
 from anystore.interface.lock import Lock
 from anystore.interface.queue import Queue
 from anystore.interface.rate_limit import RateLimit
