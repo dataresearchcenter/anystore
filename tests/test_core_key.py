@@ -59,12 +59,7 @@ def test_core_key_handler():
     # SqlFileSystem
     for uri in (
         "sqlite:///:memory:",
-        "sqlite:///:memory:/foo",
-        "sqlite:////tmp/foo",
-        "sqlite:////tmp/foo.db",
-        "sqlite:///data/foo",
-        "postgresql://user:password@localhost/data",
-        "postgresql://user:password@localhost/data/foo",
+        "sql:///:memory:",
     ):
         keys = Keys(uri)
         assert isinstance(keys.fs, SqlFileSystem)

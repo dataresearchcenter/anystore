@@ -91,6 +91,14 @@ class SqlFileSystem(AbstractFileSystem):
     root_marker = ""
     cachable = False  # codespell:ignore-line
 
+    @classmethod
+    def _get_kwargs_from_urls(cls, path: str) -> dict:
+        # "sql://" is a meta-protocol for fsspec registration; not a real
+        # SQLAlchemy dialect.  Only forward URLs with a real dialect prefix.
+        if path.startswith("sql://"):
+            return {}
+        return {"url": path}
+
     def __init__(
         self,
         url: str = "sqlite:///:memory:",

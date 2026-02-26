@@ -55,6 +55,20 @@ class RedisFileSystem(AbstractFileSystem):
     protocol = "redis"
     root_marker = ""
 
+    @classmethod
+    def _get_kwargs_from_urls(cls, path: str) -> dict:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(path)
+        if not parsed.netloc:
+            return {}
+        # Reconstruct connection URL (scheme + auth + host + port + optional db)
+        base = f"{parsed.scheme}://{parsed.netloc}"
+        parts = parsed.path.strip("/").split("/", 1)
+        if parts[0].isdigit():
+            base += f"/{parts[0]}"
+        return {"url": base}
+
     def __init__(self, url: str = "redis://localhost:6379/0", **storage_options):
         super().__init__(url=url, **storage_options)
         self._con = _get_redis(url)

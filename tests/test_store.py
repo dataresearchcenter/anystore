@@ -2,6 +2,7 @@ import threading
 import time
 from datetime import datetime, timezone
 
+import fsspec
 import pytest
 import uvicorn
 from fsspec.implementations.http import HTTPFileSystem
@@ -291,8 +292,9 @@ def test_store_initialize(tmp_path, fixtures_path):
     assert isinstance(get_store("http://example.org/files")._fs, HTTPFileSystem)
     assert isinstance(get_store("redis://localhost")._fs, RedisFileSystem)
     assert isinstance(get_store(f"sqlite:///{tmp_path}/db")._fs, SqlFileSystem)
-    assert isinstance(get_store("postgresql:///db")._fs, SqlFileSystem)
-    assert isinstance(get_store("mysql:///db")._fs, SqlFileSystem)
+    # postgresql/mysql resolve to SqlFileSystem but need their drivers installed
+    assert fsspec.get_filesystem_class("postgresql") is SqlFileSystem
+    assert fsspec.get_filesystem_class("mysql") is SqlFileSystem
     assert isinstance(get_store("anystore+http://localhost")._fs, ApiFileSystem)
 
     # raise missing dependencies
