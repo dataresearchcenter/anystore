@@ -88,7 +88,10 @@ class RedisFileSystem(AbstractFileSystem):
                         "type": "directory",
                     }
             else:
-                size = self._con.strlen(raw_key)
+                try:
+                    size = self._con.strlen(raw_key)
+                except Exception:
+                    continue  # skip non-string keys
                 entries[key] = {
                     "name": key,
                     "size": size,
@@ -110,7 +113,10 @@ class RedisFileSystem(AbstractFileSystem):
             return {"name": "", "size": 0, "type": "directory"}
 
         if self._con.exists(path):
-            size = self._con.strlen(path)
+            try:
+                size = self._con.strlen(path)
+            except Exception:
+                raise FileNotFoundError(path)
             return {
                 "name": path,
                 "size": size,
