@@ -55,8 +55,7 @@ def get_store(
         uri = settings.uri
     uri = ensure_uri(uri)
 
-    # Cache per (uri, thread) to avoid re-creating stores
-    cache_key = make_data_checksum((str(uri), kwargs, threading.get_ident()))
+    cache_key = make_data_checksum((str(uri), kwargs))
     with _store_lock:
         if cache_key in _store_cache:
             return _store_cache[cache_key]
