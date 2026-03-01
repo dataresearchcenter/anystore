@@ -118,6 +118,14 @@ class RedisFileSystem(AbstractFileSystem):
         return result
 
     # ------------------------------------------------------------------
+    # exists
+    # ------------------------------------------------------------------
+
+    def exists(self, path, **kwargs):
+        """Use fast path instead of AbstractFileSystem checking via .info()"""
+        return bool(self._con.exists(path))
+
+    # ------------------------------------------------------------------
     # info
     # ------------------------------------------------------------------
 
@@ -137,10 +145,11 @@ class RedisFileSystem(AbstractFileSystem):
                 "type": "file",
             }
 
-        # Check for implicit directory
-        pattern = f"{path}/*"
-        for _ in self._con.scan_iter(pattern, count=1):
-            return {"name": path, "size": 0, "type": "directory"}
+        # We don't check for implicit directory as this is not usage pattern for
+        # anystore
+        # pattern = f"{path}/*"
+        # for _ in self._con.scan_iter(pattern, count=1):
+        #     return {"name": path, "size": 0, "type": "directory"}
 
         raise FileNotFoundError(path)
 

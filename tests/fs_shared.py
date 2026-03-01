@@ -6,6 +6,9 @@ callable that maps a bare name to a backend-appropriate key.
 
 import pytest
 
+from anystore.fs.redis import RedisFileSystem
+from anystore.fs.sql import SqlFileSystem
+
 
 def test_pipe_and_cat(fs, key):
     fs.pipe_file(key("hello"), b"world")
@@ -67,8 +70,12 @@ def test_open_read_not_found(fs, key):
 
 def test_info_directory(fs, key):
     fs.pipe_file(key("d/f.txt"), b"x")
-    info = fs.info(key("d"))
-    assert info["type"] == "directory"
+    if isinstance(fs, (RedisFileSystem, SqlFileSystem)):
+        with pytest.raises(FileNotFoundError):
+            info = fs.info(key("d"))
+    else:
+        info = fs.info(key("d"))
+        assert info["type"] == "directory"
 
 
 def test_ls_root(fs, key):

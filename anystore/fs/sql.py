@@ -192,6 +192,22 @@ class SqlFileSystem(AbstractFileSystem):
         return result
 
     # ------------------------------------------------------------------
+    # exists
+    # ------------------------------------------------------------------
+
+    def exists(self, path, **kwargs):
+        """Use fast path instead of AbstractFileSystem checking via .info()"""
+        sa = _sa()[0]
+        path = self._strip_protocol(path).strip("/")
+        conn = self._get_conn()
+        stmt = sa.select(
+            self._table.c.timestamp,
+            self._table.c.ttl,
+        ).where(self._table.c.key == path)
+        row = conn.execute(stmt).first()
+        return row is not None and not self._is_expired(row)
+
+    # ------------------------------------------------------------------
     # info – override for efficiency (avoids ls on parent)
     # ------------------------------------------------------------------
 
@@ -217,17 +233,6 @@ class SqlFileSystem(AbstractFileSystem):
                 "type": "file",
                 "created": ts,
             }
-
-        # Check if path is an implicit directory
-        prefix = f"{path}/"
-        stmt = (
-            sa.select(self._table.c.key)
-            .where(self._table.c.key.like(f"{prefix}%"))
-            .limit(1)
-        )
-        row = conn.execute(stmt).first()
-        if row:
-            return {"name": path, "size": 0, "type": "directory"}
 
         raise FileNotFoundError(path)
 
