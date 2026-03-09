@@ -115,6 +115,8 @@ def configure_logging(level: int | str | None = None) -> None:
     if not settings.debug:
 
         def _excepthook(exc_type, exc_value, exc_tb):
+            log = get_logger(__name__)
+            log.error(str(exc_value), exc_type=exc_type.__name__)
             raise SystemExit(1)
 
         sys.excepthook = _excepthook
