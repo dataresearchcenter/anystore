@@ -51,6 +51,19 @@ def get_logger(name: str, **ctx) -> BoundLogger:
     return logger
 
 
+def _condensed_traceback(sio, exc_info, limit=5):
+    """Format traceback with only the last few frames."""
+    import traceback as tb_mod
+
+    exc_type, exc_value, exc_tb = exc_info
+    frames = tb_mod.extract_tb(exc_tb)
+    frames = frames[-limit:]
+    lines = ["Traceback (most recent call last):\n"]
+    lines.extend(tb_mod.format_list(frames))
+    lines.extend(tb_mod.format_exception_only(exc_type, exc_value))
+    sio.write("\n" + "".join(lines))
+
+
 @cache
 def configure_logging(level: int | str | None = None) -> None:
     """Configure log levels and structured logging"""
@@ -78,7 +91,11 @@ def configure_logging(level: int | str | None = None) -> None:
         formatter = ProcessorFormatter(
             foreign_pre_chain=shared_processors,
             processor=ConsoleRenderer(
-                exception_formatter=structlog.dev.plain_traceback
+                exception_formatter=(
+                    structlog.dev.plain_traceback
+                    if settings.debug
+                    else _condensed_traceback
+                )
             ),
         )
 
@@ -116,7 +133,15 @@ def configure_logging(level: int | str | None = None) -> None:
 
         def _excepthook(exc_type, exc_value, exc_tb):
             log = get_logger(__name__)
-            log.error(str(exc_value), exc_type=exc_type.__name__)
+            exc_str = str(exc_value)
+            if exc_str:
+                msg = f"{exc_type.__name__}: {exc_str}"
+            else:
+                msg = exc_type.__name__
+            log.error(
+                msg,
+                exc_info=(exc_type, exc_value, exc_tb),
+            )
             raise SystemExit(1)
 
         sys.excepthook = _excepthook
