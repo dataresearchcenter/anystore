@@ -34,10 +34,6 @@ class ErrorHandler:
         elif e is not None:
             if settings.debug:
                 raise e
-            if self.log is not None:
-                self.log.error(f"{e.__name__}: {msg}")
-            else:
-                console.print(f"[red][bold]{e.__name__}[/bold]: {msg}[/red]")
 
 
 @cli.callback(invoke_without_command=True)
