@@ -6,6 +6,17 @@ import pytest
 
 from anystore.fs.local import AnyLocalFileSystem
 from anystore.store import get_store
+from tests.fs_shared import test_exists
+
+
+@pytest.fixture
+def fs():
+    return AnyLocalFileSystem(skip_instance_cache=True)
+
+
+@pytest.fixture
+def key(tmp_path):
+    return lambda k: str(tmp_path / k)
 
 
 def test_fs_local_registration():

@@ -17,6 +17,10 @@ class AnyLocalFileSystem(LocalFileSystem):
 
     protocol = ("file", "local")
 
+    def exists(self, path, **kwargs):
+        """Use fast path instead of AbstractFileSystem checking via .info()"""
+        return os.path.lexists(self._strip_protocol(path))
+
     def iter_find(
         self, path: str, glob: str | None = None
     ) -> Generator[str, None, None]:

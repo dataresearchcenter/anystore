@@ -74,8 +74,9 @@ class ApiFileSystem(HTTPFileSystem):
             raise
 
     async def _exists(self, path, **kwargs):
+        """Use fast path — skip implicit-directory check."""
         try:
-            await self._info(path, **kwargs)
+            await super()._info(path, **kwargs)
             return True
         except FileNotFoundError:
             return False
