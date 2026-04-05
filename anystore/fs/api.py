@@ -37,6 +37,7 @@ class ApiFileSystem(HTTPFileSystem):
 
     def __init__(self, url: str | None = None, **storage_options):
         super().__init__(**storage_options)
+        self.kwargs.pop("client_kwargs", None)
 
     @staticmethod
     def _base_url(url: str) -> str:

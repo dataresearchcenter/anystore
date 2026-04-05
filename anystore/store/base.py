@@ -41,9 +41,14 @@ log = get_logger(__name__)
 
 
 class Store(StoreModel, Generic[V, Raise]):
+    _FS_INIT_KEYS = frozenset({"client_kwargs"})
+
     @cached_property
     def _fs(self) -> fsspec.AbstractFileSystem:
-        return fsspec.url_to_fs(self.uri, **self.ensure_kwargs())[0]
+        return fsspec.url_to_fs(self.uri, **self._fs_kwargs())[0]
+
+    def _fs_kwargs(self) -> dict[str, Any]:
+        return clean_dict(self.backend_config)
 
     @cached_property
     def _keys(self) -> Keys:
@@ -441,7 +446,11 @@ class Store(StoreModel, Generic[V, Raise]):
         )
 
     def ensure_kwargs(self, **kwargs) -> dict[str, Any]:
-        config = clean_dict(self.backend_config)
+        config = {
+            k: v
+            for k, v in clean_dict(self.backend_config).items()
+            if k not in self._FS_INIT_KEYS
+        }
         return {**config, **clean_dict(kwargs)}
 
     def iterate_keys(
