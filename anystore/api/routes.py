@@ -31,16 +31,20 @@ router = APIRouter()
 def get(
     store: Store,
     key: str,
-    keys: bool = False,
     exclude_prefix: str | None = None,
     glob: str | None = None,
     range: str | None = Header(default=None),
 ) -> Response:
-    if keys:
+    if key.endswith("/") or not key:
+        # listing endpoint: we return relative child paths here to mimic
+        # expected behaviour for clients. Our anystore fs later prepends the
+        # base path again for the expected `iterate_keys()` return format.`
+        prefix = key.rstrip("/") or None
+        strip = len(prefix) + 1 if prefix else 0
         data = (
-            f"{k}\n".encode()
+            f"{k[strip:]}\n".encode()
             for k in store.iterate_keys(
-                prefix=key or None,
+                prefix=prefix,
                 exclude_prefix=exclude_prefix,
                 glob=glob,
             )

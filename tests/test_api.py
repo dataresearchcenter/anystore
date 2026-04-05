@@ -87,7 +87,7 @@ def test_api_head_checksum(populated_client):
 
 
 def test_api_list_keys(populated_client):
-    res = populated_client.get("/?keys=true")
+    res = populated_client.get("/")
     assert res.status_code == 200
     keys = [k for k in res.text.splitlines() if k]
     assert "hello" in keys
@@ -95,10 +95,10 @@ def test_api_list_keys(populated_client):
 
 
 def test_api_list_keys_prefix(populated_client):
-    res = populated_client.get("/foo?keys=true")
+    res = populated_client.get("/foo/")
     assert res.status_code == 200
     keys = [k for k in res.text.splitlines() if k]
-    assert "foo/bar" in keys
+    assert "bar" in keys  # raw api returns child paths
     assert "hello" not in keys
 
 

@@ -91,14 +91,14 @@ class ApiFileSystem(HTTPFileSystem):
         url = self._strip_protocol(url)
         base = self._base_url(url)
         path = url[len(base) :].strip("/")
-        params = {"keys": "true"}
-        url_path = f"{base}/{path}" if path else base
+        url_path = f"{base}/{path}/" if path else f"{base}/"
         session = await self.set_session()
-        async with session.get(url_path, params=params, **self.kwargs) as resp:
+        async with session.get(url_path, **self.kwargs) as resp:
             resp.raise_for_status()
             text = await resp.text()
             keys = [k for k in text.splitlines() if k]
-        return base, path, [f"{base}/{k}" for k in keys]
+        prefix = f"{base}/{path}/" if path else f"{base}/"
+        return base, path, [f"{prefix}{k}" for k in keys]
 
     async def _ls_real(self, url, detail=True, **kwargs):
         base, path, flat_urls = await self._ls_flat(url, **kwargs)
