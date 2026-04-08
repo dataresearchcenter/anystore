@@ -63,6 +63,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> V:
         pass
@@ -76,6 +77,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> V | None:
         pass
@@ -89,6 +91,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> V:
         pass
@@ -102,6 +105,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> V | None:
         pass
@@ -113,6 +117,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> V | None:
         """
@@ -128,6 +133,11 @@ class Store(StoreModel, Generic[V, Raise]):
                 `serialization_mode`), overrides store settings
             model: Pydantic serialization model (ignores `serialization_mode`
                 and `deserialization_func`), overrides store settings
+            model_validate: When ``model`` is set, controls whether
+                pydantic validators run on the deserialized payload.
+                ``True`` (default) calls ``model(**data)``; ``False``
+                calls ``model.model_construct(**data)`` to skip
+                validators on a hot read path. Overrides store settings.
 
         Returns:
             The (optionally serialized) value for the key
@@ -135,6 +145,8 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode = serialization_mode or self.serialization_mode
         deserialization_func = deserialization_func or self.deserialization_func
         model = model or self.model
+        if model_validate is None:
+            model_validate = True
         if raise_on_nonexist is None:
             raise_on_nonexist = self.raise_on_nonexist
         kwargs = self.ensure_kwargs(**kwargs)
@@ -147,6 +159,7 @@ class Store(StoreModel, Generic[V, Raise]):
                 serialization_mode,
                 deserialization_func=deserialization_func,
                 model=model,
+                model_validate=model_validate,
             )
         except FileNotFoundError:  # fsspec
             if raise_on_nonexist:
@@ -162,6 +175,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> V:
         pass
@@ -175,6 +189,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> V | None:
         pass
@@ -188,6 +203,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> V:
         pass
@@ -201,6 +217,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> V | None:
         pass
@@ -212,6 +229,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> V | None:
         """
@@ -227,6 +245,9 @@ class Store(StoreModel, Generic[V, Raise]):
                 `serialization_mode`), overrides store settings
             model: Pydantic serialization model (ignores `serialization_mode`
                 and `deserialization_func`), overrides store settings
+            model_validate: When ``model`` is set, controls whether
+                pydantic validators run on the deserialized payload.
+                See :meth:`get`.
             **kwargs: Any valid arguments for the stores `get` function
 
         Returns:
@@ -238,6 +259,7 @@ class Store(StoreModel, Generic[V, Raise]):
             serialization_mode=serialization_mode,
             deserialization_func=deserialization_func,
             model=model,
+            model_validate=model_validate,
             **kwargs,
         )
         self.delete(key)
@@ -267,6 +289,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> Generator[V, None, None]:
         pass
@@ -280,6 +303,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> Generator[V, None, None] | None:
         pass
@@ -293,6 +317,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> Generator[V, None, None]:
         pass
@@ -306,6 +331,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> Generator[V, None, None] | None:
         pass
@@ -317,6 +343,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
         **kwargs,
     ) -> Generator[V, None, None] | None:
         """
@@ -332,6 +359,9 @@ class Store(StoreModel, Generic[V, Raise]):
                 `serialization_mode`), overrides store settings
             model: Pydantic serialization model (ignores `serialization_mode`
                 and `deserialization_func`), overrides store settings
+            model_validate: When ``model`` is set, controls whether
+                pydantic validators run on the deserialized payload.
+                See :meth:`get`.
 
         Yields:
             The (optionally serialized) values line by line
@@ -341,10 +371,13 @@ class Store(StoreModel, Generic[V, Raise]):
                 raise_on_nonexist=True
         """
         model = model or self.model
+        if model_validate is None:
+            model_validate = True
         extra_kwargs = {
             "serialization_mode": serialization_mode or self.serialization_mode,
             "deserialization_func": deserialization_func or self.deserialization_func,
             "model": model,
+            "model_validate": model_validate,
         }
         try:
             with self.open(key) as i:
@@ -506,6 +539,7 @@ class Store(StoreModel, Generic[V, Raise]):
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
+        model_validate: bool | None = None,
     ) -> Generator[V, None, None]:
         """
         Iterate through all the values in the store based on given criteria.
@@ -526,6 +560,9 @@ class Store(StoreModel, Generic[V, Raise]):
                 `serialization_mode`), overrides store settings
             model: Pydantic serialization model (ignores `serialization_mode`
                 and `deserialization_func`), overrides store settings
+            model_validate: When ``model`` is set, controls whether
+                pydantic validators run on the deserialized payload.
+                See :meth:`get`.
 
         Returns:
             The matching values as a generator of any (serialized) type
@@ -534,6 +571,7 @@ class Store(StoreModel, Generic[V, Raise]):
             value = self.get(
                 key,
                 serialization_mode=serialization_mode,
+                model_validate=model_validate,
                 deserialization_func=deserialization_func,
                 model=model,
             )

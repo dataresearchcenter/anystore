@@ -30,7 +30,11 @@ class StoreModel(BaseModel):
     deserialization_func: Callable | None = None
     """Default deserialization function"""
     model: Model | None = None
-    """Default pydantic model for serialization"""
+    """Default pydantic model for serialization. The companion
+    ``model_validate`` flag (skip pydantic validators on read) is
+    intentionally a per-call kwarg only — pydantic's protected
+    ``model_*`` namespace forbids it as a field, and the resolver/cache
+    layer that needs the optimization can carry its own default."""
     raise_on_nonexist: bool | None = settings.raise_on_nonexist
     """Raise `anystore.exceptions.DoesNotExist` if key doesn't exist"""
     store_none_values: bool | None = True

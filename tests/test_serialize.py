@@ -73,3 +73,40 @@ def test_serialize():
         serialize.to_store("value", serialization_func=lambda x: x.encode()) == b"value"
     )
     assert serialize.from_store(b"1", deserialization_func=int) == 1
+
+
+def test_serialize_model_validate_flag():
+    """``from_store(..., model_validate=False)`` skips pydantic validators
+    on the deserialized payload — useful for hot read paths where the
+    payload was already validated at write time."""
+    from pydantic import field_validator
+
+    class Strict(BaseModel):
+        name: str
+
+        @field_validator("name")
+        @classmethod
+        def must_be_upper(cls, v: str) -> str:
+            if not v.isupper():
+                raise ValueError("must be uppercase")
+            return v
+
+    # Default — full validation runs.
+    valid_bytes = serialize.to_store(Strict(name="ALICE"), model=Strict)
+    assert serialize.from_store(valid_bytes, model=Strict).name == "ALICE"
+
+    # Invalid payload (skips validators only when model_validate=False).
+    bad_bytes = b'{"name": "lower"}'
+    with pytest.raises(ValueError):
+        serialize.from_store(bad_bytes, model=Strict)
+    with pytest.raises(ValueError):
+        serialize.from_store(bad_bytes, model=Strict, model_validate=True)
+
+    # ``model_validate=False`` bypasses the validator and constructs the
+    # model directly via ``model_construct``.
+    bypassed = serialize.from_store(bad_bytes, model=Strict, model_validate=False)
+    assert isinstance(bypassed, Strict)
+    assert bypassed.name == "lower"  # validator skipped
+
+    # Empty payload still returns None regardless of model_validate.
+    assert serialize.from_store(None, model=Strict, model_validate=False) is None

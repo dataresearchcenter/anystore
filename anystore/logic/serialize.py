@@ -98,6 +98,7 @@ def from_store(
     serialization_mode: Mode | None = "auto",
     deserialization_func: Callable | None = None,
     model: Model | None = None,
+    model_validate: bool | None = True,
 ) -> Any:
     """
     Deserialize the bytes value retrieved from a store backend to any data.
@@ -113,6 +114,14 @@ def from_store(
         serialization_mode: "auto", "pickle", "json", "raw"
         deserialization_func: Function to use to deserialize, takes bytes as input
         model: Pydantic model to use for serialization from a json bytes string
+        model_validate: When ``model`` is set, controls whether pydantic
+            validators run on the deserialized payload. ``True`` (default)
+            calls ``model(**data)`` which runs full validation. ``False``
+            calls ``model.model_construct(**data)`` which skips all
+            validators — useful when the data was already validated at
+            write time (e.g. a hot read path) and you want to avoid the
+            re-validation cost. Use with care: bypassing validation
+            assumes the stored payload is well-formed.
 
     Returns:
         The deserialized object
@@ -122,6 +131,8 @@ def from_store(
     if model is not None:
         data = orjson.loads(value)
         if data:
+            if model_validate is False:
+                return model.model_construct(**data)
             return model(**data)
     if deserialization_func is not None:
         value = deserialization_func(value)

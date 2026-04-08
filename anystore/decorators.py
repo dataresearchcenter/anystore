@@ -72,6 +72,7 @@ def anycache(
     func: Callable[..., Any] | None = None,
     store: Store | None = None,
     model: Type[BaseModel] | None = None,
+    model_validate: bool | None = None,
     key_func: Callable[..., str | None] | None = None,
     serialization_mode: Mode | None = "auto",
     serialization_func: Callable | None = None,
@@ -107,6 +108,10 @@ def anycache(
         serialization_func: Function to use to serialize
         deserialization_func: Function to use to deserialize, takes bytes as input
         model: Pydantic model to use for serialization from a json bytes string
+        model_validate: When ``model`` is set, controls whether pydantic
+            validators run on cached payloads. ``True`` (default) runs
+            full validation; ``False`` calls ``model.model_construct``
+            to skip validators on a hot read path.
         key_func: Function to compute the cache key
         ttl: Key ttl for supported backends
         use_cache: Lookup cache (default), results are always stored
@@ -123,6 +128,7 @@ def anycache(
         serialization_func=serialization_func,
         deserialization_func=deserialization_func,
         model=model,
+        model_validate=model_validate,
         ttl=ttl,
         **store_kwargs,
     )
