@@ -66,7 +66,7 @@ def to_store(
         model: Pydantic model to use for serialization
     """
     if model is not None and value:
-        return value.model_dump_json().encode()
+        return value.model_dump_json(by_alias=True).encode()
     if serialization_func is not None:
         value = serialization_func(value)
 

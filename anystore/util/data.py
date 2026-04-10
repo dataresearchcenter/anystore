@@ -11,7 +11,9 @@ from anystore.types import SDict
 
 def _clean(val: Any) -> Any:
     if val is False:
-        return False
+        return val
+    if val == 0:
+        return val
     return val or None
 
 
