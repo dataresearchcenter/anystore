@@ -10,9 +10,12 @@ from anystore.types import SDict
 
 
 def _clean(val: Any) -> Any:
+    # hard clean to None but keep bool, 0, empty lists
     if val is False:
         return val
     if val == 0:
+        return val
+    if is_listish(val):
         return val
     return val or None
 

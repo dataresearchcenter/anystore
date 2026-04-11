@@ -31,6 +31,11 @@ def test_util_clean_dict():
     assert clean_dict({"a": ""}) == {}
     assert clean_dict({"a": {1: 2}}) == {"a": {"1": 2}}
     assert clean_dict({"a": {"b": ""}}) == {}
+    assert clean_dict({"a": 0}) == {"a": 0}
+    assert clean_dict({"a": 0, "b": ""}) == {"a": 0}
+    assert clean_dict({"a": 0.0}) == {"a": 0.0}
+    assert clean_dict({"a": False}) == {"a": False}
+    assert clean_dict({"a": False, "b": 0, "c": None}) == {"a": False, "b": 0}
 
 
 def test_util_ensure_uri():
