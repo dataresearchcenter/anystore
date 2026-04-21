@@ -146,6 +146,7 @@ def test_util_dict_merge():
     }
     assert dict_merge(d1, d2) == {
         "read": {"options": {"skiprows": 2}, "uri": "-", "handler": "read_excel"},
+        "operations": [],
         "write": {"options": {"foo": False}, "uri": "-"},
     }
 
