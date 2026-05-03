@@ -9,8 +9,12 @@ endpoints (listing, writes, deletes) are overridden.
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import re
+import time
 from typing import AsyncIterator
+from urllib.parse import quote
 
 from fsspec.asyn import sync
 from fsspec.implementations.http import HTTPFileSystem
@@ -87,7 +91,9 @@ class ApiFileSystem(HTTPFileSystem):
     # ------------------------------------------------------------------
 
     async def _ls_flat(self, url, **kwargs):
-        """Return all keys under *url* as full URLs (no directory grouping)."""
+        """Return all keys under *url* as full URLs (no directory grouping). As
+        per convention, listings are GET requests to a path with trailing
+        slash"""
         url = self._strip_protocol(url)
         base = self._base_url(url)
         path = url[len(base) :].strip("/")
@@ -101,6 +107,8 @@ class ApiFileSystem(HTTPFileSystem):
         return base, path, [f"{prefix}{k}" for k in keys]
 
     async def _ls_real(self, url, detail=True, **kwargs):
+        """As per convention, listings are GET requests to a path with trailing
+        slash"""
         base, path, flat_urls = await self._ls_flat(url, **kwargs)
         prefix = f"{base}/{path}/" if path else f"{base}/"
 
@@ -177,6 +185,33 @@ class ApiFileSystem(HTTPFileSystem):
 
     def makedirs(self, path, exist_ok=False):
         pass
+
+    # ------------------------------------------------------------------
+    # presigned urls (https://putf.sh/reference/presigned-urls/)
+    # ------------------------------------------------------------------
+
+    def sign(self, path, expiration=100, **kwargs):
+        key, secret = kwargs.pop("key"), kwargs.pop("secret")  # fail loud
+        payload = kwargs.pop("payload", "")  # signed between expires and path
+        url_prefix = kwargs.pop("url_prefix", "/_/dl")
+        stripped = self._strip_protocol(path)
+        api_base = self._base_url(stripped)
+        base = kwargs.pop("base_url", None) or api_base
+        base = base.rstrip("/")
+        key_path = stripped[len(api_base) :]
+        expires = int(time.time()) + expiration
+        raw = f"{expires}{payload}{url_prefix}{key_path} {secret}"
+        token = (
+            base64.urlsafe_b64encode(hashlib.md5(raw.encode()).digest())
+            .decode()
+            .rstrip("=")
+        )
+        mime = kwargs.get("content_type") or ""
+        dispo = kwargs.get("content_disposition") or ""
+        if dispo:
+            dispo = quote(dispo, safe=";=")
+        rest = f"&content_type={mime}&content_disposition={dispo}"
+        return f"{base}{url_prefix}{key_path}?key={key}&token={token}&expires={expires}{rest}"
 
 
 class ApiFileWriter(AbstractBufferedFile):
