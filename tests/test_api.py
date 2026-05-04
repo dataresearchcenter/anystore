@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 
 import pytest
@@ -26,7 +27,7 @@ def populated_client():
 
 def test_api_put_and_get(client):
     res = client.put("/mykey", content=b"myvalue")
-    assert res.status_code == 204
+    assert res.status_code == 201
     res = client.get("/mykey")
     assert res.status_code == 200
     assert res.content == b"myvalue"
@@ -102,6 +103,20 @@ def test_api_list_keys_prefix(populated_client):
     assert "hello" not in keys
 
 
+def test_api_list_exclude_prefix_qualified():
+    """exclude_prefix is interpreted relative to the listed prefix."""
+    store = get_store("memory:///")
+    store.put("dataset/keep.txt", b"keep", serialization_mode="raw")
+    store.put("dataset/temp/skip.txt", b"skip", serialization_mode="raw")
+    client = TestClient(create_app(store=store))
+
+    res = client.get("/dataset/", params={"exclude_prefix": "temp/"})
+    assert res.status_code == 200
+    keys = [k for k in res.text.splitlines() if k]
+    assert "keep.txt" in keys
+    assert not any("skip.txt" in k for k in keys)
+
+
 def test_api_pop(populated_client):
     res = populated_client.get("/hello")
     assert res.status_code == 200
@@ -121,7 +136,7 @@ def test_api_touch(client):
 
 def test_api_put(client):
     res = client.put("/streamkey", content=b"streamed data")
-    assert res.status_code == 204
+    assert res.status_code == 201
     res = client.get("/streamkey")
     assert res.status_code == 200
     assert res.content == b"streamed data"
@@ -169,3 +184,59 @@ def test_api_get_accept_ranges(populated_client):
     res = populated_client.get("/hello")
     assert res.status_code == 200
     assert res.headers["accept-ranges"] == "bytes"
+
+
+def test_api_invalid_range_returns_400(populated_client):
+    """Malformed Range header → ValueError → 400 via exception handler."""
+    res = populated_client.get("/hello", headers={"Range": "weird"})
+    assert res.status_code == 400
+
+
+def _asgi_request(
+    app, method: str, raw_path: bytes, body: bytes = b""
+) -> tuple[int, bytes]:
+    """Drive ASGI directly so we can send paths httpx would normalise away."""
+    chunks: list[bytes] = []
+    status_holder: dict[str, int] = {}
+
+    async def receive() -> dict:
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    async def send(msg: dict) -> None:
+        if msg["type"] == "http.response.start":
+            status_holder["s"] = msg["status"]
+        elif msg["type"] == "http.response.body":
+            chunks.append(msg["body"])
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": method,
+        "scheme": "http",
+        "server": ("test", 80),
+        "client": ("127.0.0.1", 0),
+        "path": raw_path.decode(),
+        "raw_path": raw_path,
+        "query_string": b"",
+        "headers": [
+            (b"host", b"test"),
+            (b"content-length", str(len(body)).encode()),
+        ],
+        "root_path": "",
+    }
+    asyncio.run(app(scope, receive, send))
+    return status_holder["s"], b"".join(chunks)
+
+
+@pytest.mark.parametrize("method", ["PUT", "GET", "DELETE", "HEAD"])
+def test_api_path_traversal_returns_400(method):
+    """Path traversal raises ValueError from validate_relative_uri → 400.
+
+    httpx normalises `..` segments client-side, so we drive ASGI directly.
+    """
+    store = get_store("memory:///")
+    app = create_app(store=store)
+    body = b"x" if method == "PUT" else b""
+    status, _ = _asgi_request(app, method, b"/foo/../bar", body=body)
+    assert status == 400

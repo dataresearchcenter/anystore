@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.responses import StreamingResponse
 from rigour.mime import DEFAULT
+from starlette.concurrency import run_in_threadpool
 
 from anystore.api.util import (
     is_file,
@@ -41,11 +42,18 @@ def get(
         # base path again for the expected `iterate_keys()` return format.`
         prefix = key.rstrip("/") or None
         strip = len(prefix) + 1 if prefix else 0
+        # exclude_prefix is interpreted relative to the listed prefix
+        # (matches putf.sh); iterate_keys compares against store-root-
+        # relative paths so qualify the user-supplied filter here.
+        if prefix and exclude_prefix:
+            qualified_exclude = f"{prefix}/{exclude_prefix.lstrip('/')}"
+        else:
+            qualified_exclude = exclude_prefix
         data = (
             f"{k[strip:]}\n".encode()
             for k in store.iterate_keys(
                 prefix=prefix,
-                exclude_prefix=exclude_prefix,
+                exclude_prefix=qualified_exclude,
                 glob=glob,
             )
         )
@@ -102,10 +110,15 @@ def head(
 
 @router.put("/{key:path}")
 async def put(store: Store, key: str, request: Request) -> Response:
-    with store.open(key, "wb") as fh:
+    # Sync fsspec I/O wrapped in a threadpool so it doesn't block the event
+    # loop while we await the next chunk from the request body.
+    fh = await run_in_threadpool(store.open, key, "wb")
+    try:
         async for chunk in request.stream():
-            fh.write(chunk)
-    return Response(status_code=204)
+            await run_in_threadpool(fh.write, chunk)
+    finally:
+        await run_in_threadpool(fh.close)
+    return Response(status_code=201)
 
 
 @router.delete("/{key:path}")
