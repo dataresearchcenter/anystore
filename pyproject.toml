@@ -37,7 +37,7 @@ dependencies = [
 [project.optional-dependencies]
 sql = ["sqlalchemy (>=2.0.36,<3.0.0)"]
 redis = ["redis (>=4.0.0)", "fakeredis (>=2.26.2,<3.0.0)"]
-api = ["fastapi (>=0.115.0,<1.0.0)", "uvicorn (>=0.46.0,<1.0.0)"]
+api = ["fastapi (>=0.136.1,<1.0.0)", "uvicorn (>=0.46.0,<1.0.0)"]
 
 [project.scripts]
 anystore = "anystore.cli:cli"
@@ -70,7 +70,7 @@ pre-commit = "^4.6.0"
 flake8 = ">=6.1,<8.0"
 ipdb = "^0.13.13"
 bump2version = "^1.0.1"
-moto = {extras = ["server"], version = "^5.1.22"}
+moto = {extras = ["server"], version = "^5.2.0"}
 pytest-asyncio = ">=0.23.8,<1.4.0"
 mkdocs-material = "^9.7.6"
 mkdocs-autorefs = "^1.4.4"
