@@ -38,8 +38,9 @@ Think of it as a `key -> value` store, and `anystore` acts as a [**cache backend
 
 ## License and Copyright
 
-`anystore`, (C) 2024 investigativedata.io
-`anystore`, (C) 2025 investigativedata.io
+`anystore`, (C) 2024-2025 investigativedata.io
+
+`anystore`, (C) 2026 Data and Research Center – DARC
 
 `anystore` is licensed under the AGPLv3 or later license.
 
