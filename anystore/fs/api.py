@@ -206,10 +206,12 @@ class ApiFileSystem(HTTPFileSystem):
             .decode()
             .rstrip("=")
         )
-        mime = kwargs.get("content_type") or ""
-        dispo = kwargs.get("content_disposition") or ""
-        if dispo:
-            dispo = quote(dispo, safe=";=")
+        # nginx splits query args on `&` AND `;`, so a literal `;` in either
+        # value (e.g. `attachment;filename=…` or `text/plain;charset=utf-8`)
+        # truncates `$arg_*` and breaks `secure_link_md5`. Encode `;` while
+        # keeping `/` and `=` readable.
+        mime = quote(kwargs.get("content_type") or "", safe="/=")
+        dispo = quote(kwargs.get("content_disposition") or "", safe="/=")
         rest = f"&content_type={mime}&content_disposition={dispo}"
         return f"{base}{url_prefix}{key_path}?key={key}&token={token}&expires={expires}{rest}"
 
