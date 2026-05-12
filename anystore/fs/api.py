@@ -190,30 +190,90 @@ class ApiFileSystem(HTTPFileSystem):
     # presigned urls (https://putf.sh/reference/presigned-urls/)
     # ------------------------------------------------------------------
 
-    def sign(self, path, expiration=100, **kwargs):
+    def sign(
+        self,
+        path: str,
+        expiration: int = 100,
+        **kwargs,
+    ) -> str:
+        """Build a PutFS-style presigned URL.
+
+        Default URL shape::
+
+            <base>/_/dl/<key>?k=<keyid>&e=<unix-ts>&t=<base64url-md5>
+                                       [&c=<mime>][&d=<disposition>][&f=<filename>]
+
+        The token is the URL-safe base64 (no padding) of
+        ``md5(<format> <secret>)`` where the default ``<format>`` mirrors
+        nginx's ``$secure_link_expires$request_method$arg_c$arg_d$arg_f$uri``
+        — i.e. expiry, method, content-type arg, disposition arg, filename
+        arg, request URI — to match the no-IP-binding variant of the upstream
+        ``putfs_presign_md5_format``. Callers can override the format via the
+        ``payload`` kwarg (the slice between ``expires`` and ``uri``) when
+        the deployment uses a different format string.
+
+        Recognised kwargs:
+
+        * ``key``, ``secret`` — keypair (looked up server-side via ``$arg_k``)
+        * ``content_type``    — value for ``$arg_c`` (response Content-Type)
+        * ``content_disposition`` — keyword for ``$arg_d``
+          (``attachment`` | ``inline``)
+        * ``filename``        — value for ``$arg_f`` (download filename hint)
+        * ``method``          — request method bound into the hash
+          (default ``"GET"``)
+        * ``payload``         — explicit override of the
+          method+c+d+f portion of the MD5 input
+        * ``base_url``        — emit URLs against this base instead of the
+          fsspec instance's host (e.g. for behind-proxy deployments)
+        * ``url_prefix``      — must match nginx's ``putfs_presign_path``
+          (default ``"/_/dl"``)
+        """
         key, secret = kwargs.pop("key"), kwargs.pop("secret")  # fail loud
-        payload = kwargs.pop("payload", "")  # signed between expires and path
-        url_prefix = kwargs.pop("url_prefix", "/_/dl")
+        url_prefix = kwargs.pop("url_prefix", "/_/dl").rstrip("/")
+        method = kwargs.pop("method", "GET")
         stripped = self._strip_protocol(path)
         api_base = self._base_url(stripped)
         base = kwargs.pop("base_url", None) or api_base
         base = base.rstrip("/")
         key_path = stripped[len(api_base) :]
         expires = int(time.time()) + expiration
+
+        # nginx splits query args on `&` AND `;`, so a literal `;` in either
+        # value (e.g. `attachment;filename=…` or `text/plain;charset=utf-8`)
+        # truncates `$arg_*` and breaks `secure_link_md5`. Encode `;` while
+        # keeping `/` and `=` readable.
+        mime = quote(kwargs.pop("content_type", "") or "", safe="/=")
+        dispo = quote(kwargs.pop("content_disposition", "") or "", safe="/=")
+        filename = quote(kwargs.pop("filename", "") or "", safe="/=")
+
+        # Default format (no IP binding) mirrors:
+        #   $secure_link_expires$request_method$arg_c$arg_d$arg_f$uri
+        # `payload` is the slice between expires and uri; callers can pass
+        # their own to match a custom `putfs_presign_md5_format`. Treat an
+        # explicit ``None`` as "use the default" so callers can pass it
+        # unconditionally.
+        payload = kwargs.pop("payload", None)
+        if payload is None:
+            payload = f"{method}{mime}{dispo}{filename}"
+
         raw = f"{expires}{payload}{url_prefix}{key_path} {secret}"
         token = (
             base64.urlsafe_b64encode(hashlib.md5(raw.encode()).digest())
             .decode()
             .rstrip("=")
         )
-        # nginx splits query args on `&` AND `;`, so a literal `;` in either
-        # value (e.g. `attachment;filename=…` or `text/plain;charset=utf-8`)
-        # truncates `$arg_*` and breaks `secure_link_md5`. Encode `;` while
-        # keeping `/` and `=` readable.
-        mime = quote(kwargs.get("content_type") or "", safe="/=")
-        dispo = quote(kwargs.get("content_disposition") or "", safe="/=")
-        rest = f"&content_type={mime}&content_disposition={dispo}"
-        return f"{base}{url_prefix}{key_path}?key={key}&token={token}&expires={expires}{rest}"
+
+        # PutFS uses single-letter args to keep URLs short. Optional args are
+        # only emitted when set so the URL stays minimal — but they must still
+        # be in the hash above (nginx hashes the empty string when missing).
+        qs = [f"k={key}", f"e={expires}", f"t={token}"]
+        if mime:
+            qs.append(f"c={mime}")
+        if dispo:
+            qs.append(f"d={dispo}")
+        if filename:
+            qs.append(f"f={filename}")
+        return f"{base}{url_prefix}{key_path}?{'&'.join(qs)}"
 
 
 class ApiFileWriter(AbstractBufferedFile):
