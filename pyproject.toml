@@ -80,7 +80,7 @@ mkdocs = "^1.6.1"
 mkdocs-typer2 = "^0.3.0"
 httpx = "^0.28.1"
 griffe = "<3"
-zensical = "^0.0.41"
+zensical = "^0.0.42"
 
 [build-system]
 requires = ["poetry-core"]
