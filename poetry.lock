@@ -2501,14 +2501,14 @@ files = [
 
 [[package]]
 name = "mkdocs-typer2"
-version = "0.3.0"
+version = "0.3.1"
 description = "Typer CLI docs for MkDocs (optional) and Zensical via Python-Markdown"
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "mkdocs_typer2-0.3.0-py3-none-any.whl", hash = "sha256:dfa12fd18a0ea902c815609affc59b2dd2e32ce28bc45fed3631da1803b21f07"},
-    {file = "mkdocs_typer2-0.3.0.tar.gz", hash = "sha256:49fa65a60eb35a8aca6b2004de8ea0d3240e6b7ecbdf77dcf997b5ae819072f9"},
+    {file = "mkdocs_typer2-0.3.1-py3-none-any.whl", hash = "sha256:ed7dac5c8a1bfab4aa31a0c7a83f9ac1d53f1312c4793089ec34b686d169d7bb"},
+    {file = "mkdocs_typer2-0.3.1.tar.gz", hash = "sha256:7415716a4c128da392bffcd5453bb60653b202b4e8c49050c45bb3699b5c98c3"},
 ]
 
 [package.dependencies]
@@ -5514,4 +5514,4 @@ sql = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "497ce9c48d44401b1b668c2b48d860476031d88c4e773dad39fdbb92892530c0"
+content-hash = "830869e9c8cbed52ecc96f20a2b37a6eb006694d664aa2825a3ea88e1709bea0"
