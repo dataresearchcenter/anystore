@@ -74,7 +74,7 @@ moto = {extras = ["server"], version = "^5.2.0"}
 pytest-asyncio = ">=1.4.0,<1.5.0"
 mkdocs-material = "^9.7.6"
 mkdocs-autorefs = "^1.4.4"
-mkdocstrings-python = "^2.0.1"
+mkdocstrings-python = "^2.0.4"
 griffe-pydantic = "^1.1.6"
 mkdocs = "^1.6.1"
 mkdocs-typer2 = "^0.3.0"
