@@ -1,7 +1,7 @@
 import mimetypes
 import re
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO, StringIO
 from os.path import splitext
 from typing import Self
@@ -95,11 +95,11 @@ class Took:
     """
 
     def __init__(self) -> None:
-        self.start = datetime.now()
+        self.start = datetime.now(timezone.utc)
 
     @property
     def took(self) -> timedelta:
-        return datetime.now() - self.start
+        return datetime.now(timezone.utc) - self.start
 
     def __enter__(self) -> Self:
         return self

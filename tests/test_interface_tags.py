@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from anystore.interface.tags import get_tags
 
@@ -13,9 +13,11 @@ def _test_tags(tags):
 
     with tags.touch("runs/3/succeed"):
         time.sleep(1)
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
-    assert tags.get("runs/3/succeed") < now
+    stored = tags.get("runs/3/succeed")
+    assert stored.tzname() == "UTC"
+    assert stored < now
 
     def _fail():
         try:

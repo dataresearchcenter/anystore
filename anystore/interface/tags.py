@@ -1,5 +1,5 @@
 import contextlib
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import cache
 from typing import Generator
 
@@ -59,7 +59,7 @@ class Tags:
         Store the timestamp for a given tag but only at context leave.
 
         This is useful to tag a long running thing only after succeed but with a
-        timestamp from when the action started.
+        timestamp from when the action started. The timestamp is tz-aware UTC.
 
         Example:
             ```python
@@ -69,7 +69,7 @@ class Tags:
                 # if it succeeds, the timestamp from the start (`now`) will be stored
             ```
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         try:
             yield now
         except Exception as e:
