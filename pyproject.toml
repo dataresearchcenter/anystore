@@ -20,7 +20,6 @@ dependencies = [
     "orjson (>=3.11.9,<4.0.0)",
     "pydantic (>=2.13.4,<3.0.0)",
     "fsspec (>2023.10,<2027)",
-    "s3fs (>2023.10,<2027)",
     "typer (>=0.25.1)",
     "pyaml (>=26.2.1,<27.0.0)",
     "cloudpickle (>=3.1.0,<4.0.0)",
@@ -35,6 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+s3 = ["s3fs (>2023.10,<2027)"]
 sql = ["sqlalchemy (>=2.0.51,<3.0.0)"]
 redis = ["redis (>=4.0.0)", "fakeredis (>=2.36.2,<3.0.0)"]
 api = ["fastapi (>=0.136.3,<1.0.0)", "uvicorn (>=0.48.0,<1.0.0)"]
