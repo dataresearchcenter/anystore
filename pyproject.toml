@@ -37,7 +37,7 @@ dependencies = [
 s3 = ["s3fs (>2023.10,<2027)"]
 sql = ["sqlalchemy (>=2.0.51,<3.0.0)"]
 redis = ["redis (>=4.0.0)", "fakeredis (>=2.36.2,<3.0.0)"]
-api = ["fastapi (>=0.136.3,<1.0.0)", "uvicorn (>=0.48.0,<1.0.0)"]
+api = ["fastapi (>=0.139.0,<1.0.0)", "uvicorn (>=0.48.0,<1.0.0)"]
 
 [project.scripts]
 anystore = "anystore.cli:cli"
