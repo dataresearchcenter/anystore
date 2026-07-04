@@ -64,6 +64,28 @@ def _condensed_traceback(sio, exc_info, limit=5):
     sio.write("\n" + "".join(lines))
 
 
+class _StderrHandler(logging.StreamHandler):
+    """StreamHandler that always resolves the *current* ``sys.stderr``.
+
+    The default :class:`logging.StreamHandler` captures the stream object at
+    construction time. When that stream is later swapped out and closed – e.g.
+    click's ``CliRunner`` isolation buffer or pytest capture – a cached handler
+    keeps writing to the now-closed file and every emit raises ``ValueError:
+    I/O operation on closed file``. Resolving ``sys.stderr`` lazily on each
+    access keeps the handler valid across such swaps. Mirrors the stdlib
+    ``logging._StderrHandler`` backing ``logging.lastResort``.
+    """
+
+    def __init__(self, level: int | str = logging.NOTSET) -> None:
+        # Bypass ``StreamHandler.__init__`` so no concrete stream is bound;
+        # ``stream`` below is the single source of truth.
+        logging.Handler.__init__(self, level)
+
+    @property
+    def stream(self) -> Any:
+        return sys.stderr
+
+
 @cache
 def configure_logging(level: int | str | None = None) -> None:
     """Configure log levels and structured logging"""
@@ -114,12 +136,12 @@ def configure_logging(level: int | str | None = None) -> None:
     )
 
     # handler for low level logs that should be sent to STDERR
-    out_handler = logging.StreamHandler(sys.stderr)
+    out_handler = _StderrHandler()
     out_handler.setLevel(log_level)
     out_handler.addFilter(_MaxLevelFilter(logging.WARNING))
     out_handler.setFormatter(formatter)
     # handler for high level logs that should be sent to STDERR
-    error_handler = logging.StreamHandler(sys.stderr)
+    error_handler = _StderrHandler()
     error_handler.setLevel(logging.ERROR)
     error_handler.setFormatter(formatter)
 
