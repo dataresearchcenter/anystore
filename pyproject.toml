@@ -82,7 +82,7 @@ pytest-asyncio = ">=1.4.0,<1.5.0"
 mkdocstrings-python = "^2.0.5"
 griffe-pydantic = "^1.1.6"
 httpx = "^0.28.1"
-zensical = "^0.0.46"
+zensical = "^0.0.47"
 mkdocs-autorefs = "^1.4.4"
 
 [build-system]
