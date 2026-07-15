@@ -41,7 +41,7 @@ redis = ["redis (>=4.0.0)", "fakeredis (>=2.36.2,<3.0.0)"]
 # one group, so `api` mirrors it via aiohttp (the sole content of fsspec[http])
 api = [
     "fastapi (>=0.136.3,<1.0.0)",
-    "uvicorn (>=0.50.0,<1.0.0)",
+    "uvicorn (>=0.51.0,<1.0.0)",
     "aiohttp (!=4.0.0a0,!=4.0.0a1)",
 ]
 http = ["fsspec[http] (>2023.10,<2027)"]
