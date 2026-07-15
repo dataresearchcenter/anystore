@@ -230,7 +230,7 @@ class Store(StoreModel, Generic[V, Raise]):
         deserialization_func: Callable | None = None,
         model: Model | None = None,
         model_validate: bool | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> V | None:
         """
         Retrieve the value for the given key and remove it from the store.

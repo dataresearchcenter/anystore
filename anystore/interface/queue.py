@@ -1,5 +1,5 @@
 import contextlib
-from typing import Generator, Generic, TypeVar
+from typing import Any, Generator, Generic, TypeVar
 
 from pydantic import BaseModel
 
@@ -104,7 +104,7 @@ class Queue(Tags, Generic[T]):
                 yield item
 
 
-def get_queue(t: type[T], *args, **kwargs) -> Queue[T]:
+def get_queue(t: type[T], *args: Any, **kwargs: Any) -> Queue[T]:
     """
     Get a typed queue instance.
 

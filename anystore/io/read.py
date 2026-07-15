@@ -200,7 +200,7 @@ def smart_read(uri: Uri, mode: str | None = DEFAULT_MODE, **kwargs: Any) -> AnyS
 
 
 def open_virtual(
-    uri: "TUri", algorithm: str | None = None, **kwargs
+    uri: "TUri", algorithm: str | None = None, **kwargs: Any
 ) -> ContextManager[VirtualIO]:
     """Wrapper for [UriResource.local_open][anystore.store.resource.UriResource.local_open]
 
