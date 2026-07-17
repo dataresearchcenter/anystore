@@ -56,6 +56,18 @@ def test_core_key_handler():
     assert keys.from_fs_key(keys.to_fs_key("bar")) == "bar"
     assert keys.key_prefix == "foo"
 
+    # RedisFileSystem: a numeric first path segment is the db selector,
+    # not part of the key prefix
+    keys = Keys("redis://localhost/1/foo")
+    assert keys.key_prefix == "foo"
+    assert keys.to_fs_key("bar") == "foo/bar"
+    assert keys.from_fs_key(keys.to_fs_key("bar")) == "bar"
+
+    keys = Keys("redis://localhost/1")
+    assert keys.key_prefix == ""
+    assert keys.to_fs_key("bar") == "bar"
+    assert keys.from_fs_key(keys.to_fs_key("bar")) == "bar"
+
     # SqlFileSystem
     for uri in (
         "sqlite:///:memory:",

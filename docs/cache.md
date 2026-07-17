@@ -19,24 +19,20 @@ A useful example configuration for a 1 hour redis cache (assuming all data is js
 from anystore import get_store
 
 store = get_store(
-    uri="redis://localhost",
+    uri="redis://localhost/my-cache-001",
     serialization_mode="json",
     raise_on_nonexist=False,  # just return `None` for missing data
     default_ttl=3600,
-    backend_config={
-        "redis_prefix": "my-cache-001"
-    }
 )
 ```
 
 All these options could be configured with these environment variables:
 
 ```bash
-ANYSTORE_URI=redis://localhost
+ANYSTORE_URI=redis://localhost/my-cache-001
 ANYSTORE_SERIALIZATION_MODE=json
 ANYSTORE_RAISE_ON_NONEXIST=0
 ANYSTORE_DEFAULT_TTL=3600
-ANYSTORE_BACKEND_CONFIG__REDIS_PREFIX=my-cache-001
 ```
 
 ## Use the cache

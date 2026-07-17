@@ -41,6 +41,11 @@ class Keys:
         if self.uri.scheme == SCHEME_MEMORY:
             return self._base_path.strip("/")
         if self.uri.scheme == SCHEME_REDIS:
+            # a numeric first path segment is the redis db selector
+            # (see RedisFileSystem._get_kwargs_from_urls), not part of the keys
+            parts = path.split("/", 1)
+            if parts[0].isdigit():
+                return parts[1] if len(parts) > 1 else ""
             return path
         if "sql" in self.uri.scheme:
             return ""

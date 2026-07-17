@@ -16,9 +16,8 @@ Initialize a store with override options:
 from anystore import get_store
 
 store = get_store(
-    uri="redis://localhost",
+    uri="redis://localhost/my-prefix",
     default_ttl=3600,
-    backend_config={"redis_prefix": "my-prefix"},
 )
 ```
 
@@ -29,7 +28,7 @@ All the keyword arguments to [`get_store`][anystore.store.get_store] can be conf
 Nested config dicts (such as `backend_config`) can be configured via environment vars as well, using `__` as a nesting separator:
 
 ```bash
-ANYSTORE_BACKEND_CONFIG__REDIS_PREFIX=my-prefix
+ANYSTORE_BACKEND_CONFIG__ANON=true
 ```
 
 Environment vars values will be casted based on their type (e.g. "0" for "False", "yes" for "True").
@@ -73,7 +72,14 @@ ANYSTORE_URI=https://example.org/files             # Read-only via file listing
 
     redis://user:password@hostname:port
 
-A key prefix for all stored data can be set via `redis_prefix` in `backend_config` or `ANYSTORE_BACKEND_CONFIG__REDIS_PREFIX`
+A key prefix for all stored data can be set via the uri path:
+
+    redis://localhost/my-prefix
+
+A numeric first path segment selects the redis database instead of acting as a key prefix:
+
+    redis://localhost/1            # use redis db 1
+    redis://localhost/1/my-prefix  # use redis db 1, prefix keys with "my-prefix"
 
 #### debug mode (fakeredis)
 

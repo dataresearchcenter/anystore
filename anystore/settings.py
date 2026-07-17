@@ -49,7 +49,7 @@ class Settings(BaseSettings):
         prepending `ANYSTORE_` (except for those with a given prefix)
 
         Backend config: Use `__` as a separator for dictionary content, e.g.:
-        `ANYSTORE_BACKEND_CONFIG__REDIS_PREFIX="foo"`
+        `ANYSTORE_BACKEND_CONFIG__ANON=true`
     """
 
     model_config = SettingsConfigDict(

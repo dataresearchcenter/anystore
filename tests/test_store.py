@@ -219,6 +219,34 @@ def test_store_redis(fixtures_path):
     assert _test_store(fixtures_path, "redis://localhost")
 
 
+def test_store_redis_prefix():
+    store = get_store("redis://localhost/test-prefix")
+    store.put("foo", "bar")
+    assert store.get("foo") == "bar"
+    assert store.exists("foo")
+    # the value lives under the prefixed backend key
+    assert store._fs.exists("test-prefix/foo")
+    assert list(store.iterate_keys()) == ["foo"]
+    # a store without the prefix doesn't see the key
+    plain = get_store("redis://localhost")
+    assert not plain.exists("foo")
+    store.delete("foo")
+    assert not store.exists("foo")
+
+
+def test_store_redis_db_prefix():
+    # a numeric first path segment selects the redis db, the rest is the prefix
+    store = get_store("redis://localhost/1/test-prefix")
+    store.put("foo", "bar")
+    assert store.get("foo") == "bar"
+    # the db selector is not part of the backend key
+    assert store._fs.exists("test-prefix/foo")
+    assert not store._fs.exists("1/test-prefix/foo")
+    assert list(store.iterate_keys()) == ["foo"]
+    store.delete("foo")
+    assert not store.exists("foo")
+
+
 def test_store_sql(fixtures_path, tmp_path):
     assert _test_store(fixtures_path, f"sqlite:///{tmp_path}/db.sqlite")
 

@@ -32,7 +32,7 @@ def get_store(
         # initialize from current configuration
         store = get_store()
         # get a redis store with custom prefix
-        store = get_store("redis://localhost", backend_config={"redis_prefix": "foo"})
+        store = get_store("redis://localhost/foo")
         ```
 
     Args:
