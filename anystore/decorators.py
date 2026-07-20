@@ -48,7 +48,7 @@ def _setup_decorator(**kwargs) -> tuple[Callable, Store]:
     store = store.model_copy()
     store.default_ttl = kwargs.pop("ttl", None) or store.default_ttl
     for key, value in kwargs.items():
-        if key != "uri":
+        if key not in ("uri", "model_validate"):
             try:
                 setattr(store, key, value)
             except ValueError as e:
