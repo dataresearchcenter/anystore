@@ -1171,15 +1171,15 @@ tests = ["asttokens (>=2.1.0)", "coverage", "coverage-enable-subprocess", "ipyth
 
 [[package]]
 name = "fakeredis"
-version = "2.36.2"
+version = "2.37.0"
 description = "Python implementation of redis API, can be used for testing purposes."
 optional = true
 python-versions = ">=3.7"
 groups = ["main"]
 markers = "extra == \"redis\""
 files = [
-    {file = "fakeredis-2.36.2-py3-none-any.whl", hash = "sha256:84cbb9c74ca8946c0d2499daadf3a5d0bfe3cfbac71e3398316d1a1eab3421c4"},
-    {file = "fakeredis-2.36.2.tar.gz", hash = "sha256:c37a0b307fae3f27ec7c19e59519e57b8c52782e00303df9075361b5ba441be6"},
+    {file = "fakeredis-2.37.0-py3-none-any.whl", hash = "sha256:657a2a695a1123be0c13f98db409371497bd94c29d260dd76a9fc7ce1a633745"},
+    {file = "fakeredis-2.37.0.tar.gz", hash = "sha256:7461f124dcba04a80691d72270b3d1d5cd100ef14dc068c76db825940f3ed799"},
 ]
 
 [package.dependencies]
@@ -5396,4 +5396,4 @@ sql = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "e1557832ccda1489deba493414684c0dcfdb842a3267ec785a25696b8ee2deb3"
+content-hash = "3ebb63e44febf956faf5e04cb02f97c8ec5d3cd8fc5461247eaedc40dbb2b0ce"
