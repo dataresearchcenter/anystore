@@ -7,9 +7,11 @@ from urllib.parse import ParseResult, unquote, urlparse
 import fsspec
 
 from anystore.logic.constants import SCHEME_FILE, SCHEME_MEMORY, SCHEME_REDIS, SCHEME_S3
+from anystore.settings import Settings
 from anystore.types import Uri
 
 CURRENT = "."
+settings = Settings()
 
 
 def ensure_uri(uri: Any, http_unquote: bool | None = True) -> str:
@@ -238,7 +240,7 @@ def validate_uri(uri: Uri | None = None) -> str:
     uri = unquote(str(uri).strip())
     if not uri:
         raise ValueError(f"Invalid empty uri: `{uri}`")
-    if "../" in uri:
+    if "../" in uri and not settings.unsafe_uris:
         raise ValueError(f"Path traversal forbidden: `{uri}`")
     return uri
 

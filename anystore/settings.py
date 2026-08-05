@@ -79,3 +79,6 @@ class Settings(BaseSettings):
 
     backend_config: dict[str, Any] = {}
     """Arbitrary backend config to pass through"""
+
+    unsafe_uris: bool = False
+    """Set to true to allow path traversals in uris"""
