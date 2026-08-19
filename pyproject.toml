@@ -35,7 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 s3 = ["s3fs (>2023.10,<2027)"]
-sql = ["sqlalchemy (>=2.0.51,<3.0.0)"]
+sql = ["sqlalchemy (>=2.0.52,<3.0.0)"]
 redis = ["redis (>=8.1.0)", "fakeredis (>=2.37.0,<3.0.0)"]
 # poetry cannot resolve the same extra-dependency (fsspec[http]) in more than
 # one group, so `api` mirrors it via aiohttp (the sole content of fsspec[http])
