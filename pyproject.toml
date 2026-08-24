@@ -36,7 +36,7 @@ dependencies = [
 [project.optional-dependencies]
 s3 = ["s3fs (>2023.10,<2027)"]
 sql = ["sqlalchemy (>=2.0.52,<3.0.0)"]
-redis = ["redis (>=8.1.0)", "fakeredis (>=2.37.0,<3.0.0)"]
+redis = ["redis (>=8.1.0)", "fakeredis (>=2.37.1,<3.0.0)"]
 # poetry cannot resolve the same extra-dependency (fsspec[http]) in more than
 # one group, so `api` mirrors it via aiohttp (the sole content of fsspec[http])
 api = [
@@ -82,7 +82,7 @@ pytest-asyncio = ">=1.4.0,<1.5.0"
 mkdocstrings-python = "^2.0.7"
 griffe-pydantic = "^1.1.6"
 httpx = "^0.28.1"
-zensical = "^0.0.54"
+zensical = "^0.0.56"
 mkdocs-autorefs = "^1.4.4"
 
 [build-system]
