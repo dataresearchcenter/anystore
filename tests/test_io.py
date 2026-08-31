@@ -302,5 +302,6 @@ def test_io_stream_bytes(tmp_path):
     source = get_store(uri=str(tmp_path / "src"))
     target = get_store(uri=str(tmp_path / "dst"))
     source.put("file.txt", b"content")
-    stream_bytes("file.txt", source, target)
+    size = stream_bytes("file.txt", source, target)
     assert target.get("file.txt") == "content"
+    assert size == 7

@@ -20,17 +20,22 @@ if TYPE_CHECKING:
 Uri: TypeAlias = _Uri | BinaryIO | TextIO
 
 
-def stream(reader: IO, writer: IO, chunk_size: int = CHUNK_SIZE) -> None:
-    """Copy data from *reader* to *writer* in chunks."""
+def stream(reader: IO, writer: IO, chunk_size: int = CHUNK_SIZE) -> int:
+    """Copy data from *reader* to *writer* in chunks. Returns streamed bytes
+    count."""
+    size = 0
     while chunk := reader.read(chunk_size):
         writer.write(chunk)
+        size += len(chunk)
+    return size
 
 
-def stream_bytes(key: str, source: "Store", target: "Store", **kwargs: Any) -> None:
-    """Stream binary content for *key* from *source* to *target* store."""
+def stream_bytes(key: str, source: "Store", target: "Store", **kwargs: Any) -> int:
+    """Stream binary content for *key* from *source* to *target* store. Returns
+    streamed bytes count"""
     with source.open(key, "rb", **kwargs) as i:
         with target.open(key, "wb") as o:
-            stream(i, o)
+            return stream(i, o)
 
 
 def _is_seekable(fh: IO) -> bool:
