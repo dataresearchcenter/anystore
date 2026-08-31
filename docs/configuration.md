@@ -62,6 +62,7 @@ ANYSTORE_URI=s3://my_bucket/prefix/foo             # Sub path in S3
 ANYSTORE_URI=gcs://my_bucket                       # Google cloud storage
 ANYSTORE_URI=sftp://my_server.net:/var/lib/data    # Connect via ssh
 ANYSTORE_URI=https://example.org/files             # Read-only via file listing
+ANYSTORE_URI=putfs://my_server.net:8000/prefix     # PutFS server (putf.sh), needs `putfs` extra
 ```
 
 ## Backend specific config

@@ -12,14 +12,6 @@ except ImportError:
     HTTPFileSystem = None
     CAN_HTTP = False
 
-try:
-    from anystore.fs.api import ApiFileSystem
-
-    CAN_API = True
-except ImportError:
-    ApiFileSystem = None
-    CAN_API = False
-
 from anystore.logic.constants import SCHEME_FILE, SCHEME_MEMORY, SCHEME_REDIS
 from anystore.logic.uri import UriHandler, validate_relative_uri, validate_uri
 from anystore.types import Uri
@@ -49,8 +41,6 @@ class Keys:
             return path
         if "sql" in self.uri.scheme:
             return ""
-        if CAN_API and isinstance(self.fs, ApiFileSystem):
-            return ApiFileSystem._strip_protocol(str(self.uri))
         if CAN_HTTP and isinstance(self.fs, HTTPFileSystem):
             return str(self.uri)
         # other fsspec implementations want relative path with netloc

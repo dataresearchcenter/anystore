@@ -14,7 +14,7 @@ Use the `.venv` virtualenv for all Python/poetry commands:
 
 Use the `.venv` virtualenv pip directly instead of `make install` (poetry is not on PATH):
 ```bash
-.venv/bin/pip install -e ".[sql,redis,api]"
+.venv/bin/pip install -e ".[sql,redis,putfs]"
 ```
 
 ## Common Commands
@@ -66,8 +66,7 @@ Layer 7:  store/        — Store, Keys, UriResource, virtual store
 Layer 8:  io/           — smart_read/write/stream, Writer, SmartHandler
 Layer 9:  decorators.py — @anycache, @error_handler
 Layer 10: interface/    — Queue, Tags, Lock, RateLimit
-Layer 11: api/          — FastAPI REST API
-Layer 12: cli.py, __init__.py
+Layer 11: cli.py, __init__.py
 ```
 
 Each layer may only import from layers above it (lower number). Lazy imports
@@ -93,7 +92,6 @@ imports (e.g. `logic/io.py` type-hints `Store`).
   - `info.py` — `Info` (normalized `fs.info()`) and `Stats`
 - **`fs/`** — Custom fsspec filesystem implementations
   - `local.py` — `AnyLocalFileSystem` (overrides `file://`/`local://` with fast `exists` and lazy `iter_find`)
-  - `api.py` — `ApiFileSystem` (`anystore+http(s)://` scheme)
   - `redis.py` — `RedisFileSystem` (falls back to fakeredis when `REDIS_DEBUG` is set)
   - `sql.py` — `SqlFileSystem` (SQLite, PostgreSQL, MySQL)
 - **`store/`** — Main store interface
@@ -110,10 +108,6 @@ imports (e.g. `logic/io.py` type-hints `Store`).
 - **`decorators.py`** — `@anycache`, `@async_anycache`, `@error_handler`, `@async_error_handler`
 - **`interface/`** — Higher-level abstractions: `Queue`/`Queues`, `Tags`, `Lock`, `RateLimit`, plus cached
   `get_tags` / `get_lock` / `get_queue` / `get_rate_limit` factories in `__init__.py`
-- **`api/`** — FastAPI REST API for exposing a store over HTTP
-  - `app.py` — `create_app(store)` factory
-  - `routes.py` — CRUD endpoints (GET/PUT/DELETE/HEAD/PATCH)
-  - `util.py` — Streaming helpers (chunked reads, range parsing)
 - **`cli.py`** — Typer CLI (`anystore` command)
 
 ### Store Pattern
@@ -131,16 +125,16 @@ imports (e.g. `logic/io.py` type-hints `Store`).
 - `io/__init__.py` re-exports the public API for convenience (`from anystore.io import smart_read`)
 - Lazy imports are only acceptable to break circular dependencies at layer boundaries
 
-### API + ApiFileSystem
+### putfs
 
-The API module exposes any store over HTTP. `ApiFileSystem` is a fsspec filesystem that talks to this API, registered as `anystore+http(s)://`. It subclasses fsspec's `HTTPFileSystem` so standard HTTP operations (range reads, seekable files) are handled natively — only listing, writes, and deletes are overridden. All reads and writes stream in chunks to avoid buffering large blobs in memory.
+anystore has no HTTP blob server of its own. The `putfs://` scheme is provided by the external [putfs](https://putf.sh) package (extra: `putfs`), which registers its own `PutFSFileSystem` fsspec entry point and needs nothing from anystore beyond the generic `HTTPFileSystem` branch in `store/keys.py`. Its server ignores `Range` (nginx serves reads in production), so ranged reads only work behind nginx.
 
 ### Entry Points
 
 - **CLI**: `anystore` command via `anystore.cli:cli`
 - **Python**: `from anystore import get_store, anycache, smart_read, smart_write`
 - **Config**: Environment variables with `ANYSTORE_` prefix (base settings like `DEBUG`, `REDIS_DEBUG`, `LOG_LEVEL` are unprefixed)
-- **fsspec**: Custom schemes registered via entry points in `pyproject.toml` — `file`/`local` (overriding fsspec's own `LocalFileSystem`), `sql`/`sqlite`/`mysql`/`postgresql`, `redis`, `anystore+http(s)`
+- **fsspec**: Custom schemes registered via entry points in `pyproject.toml` — `file`/`local` (overriding fsspec's own `LocalFileSystem`), `sql`/`sqlite`/`mysql`/`postgresql`, `redis`
 
 ### Testing Notes
 
@@ -148,6 +142,7 @@ The API module exposes any store over HTTP. `ApiFileSystem` is a fsspec filesyst
 - `conftest.py` autouse fixtures spawn a `http.server` on port **8000** (serving `tests/fixtures`) and a moto S3 server on port **8888**; both ports must be free
 - S3 tests use `moto` for AWS mocking
 - `tests/fs_shared.py` holds the shared filesystem test suite, imported by each `test_fs_*.py` with backend-specific `fs`/`key` fixtures
-- API filesystem tests start a real uvicorn server with `port=0` for random port allocation
+- `tests/conftest.py`'s `putfs_server` fixture spawns a real `granian putfs.api:app` subprocess on a free port; `putfs.api` binds `PUTFS_ROOT` at import time, so it cannot run in-process
+- Backends that cannot serve HTTP range requests (putfs) override the `supports_ranges` fixture to `False`, which skips the ranged tests in `fs_shared.py`
 - `test_store.py::_test_store()` is a shared roundtrip test exercised against every backend
 - `test_store_sql` child store prefix test is a known limitation (SQL URIs are ambiguous about file path vs key prefix)

@@ -40,6 +40,17 @@ settings = Settings()
 log = get_logger(__name__)
 
 
+def _key_depth(key: str, prefix: str) -> int:
+    """Number of path segments of a store-relative `key`, counted from `prefix`.
+
+    `Store.iterate_keys` yields store-relative keys but measures `depth` from
+    the listing prefix, so "foo/bar.txt" is at depth 1 within "foo".
+    """
+    if prefix and key.startswith(f"{prefix}/"):
+        key = key[len(prefix) + 1 :]
+    return key.count("/") + 1
+
+
 class Store(StoreModel, Generic[V, Raise]):
     _FS_INIT_KEYS = frozenset({"client_kwargs"})
 
@@ -491,6 +502,7 @@ class Store(StoreModel, Generic[V, Raise]):
         prefix: str | None = None,
         exclude_prefix: str | None = None,
         glob: str | None = None,
+        depth: int | None = None,
     ) -> Generator[str, None, None]:
         """
         Iterate through all the keys in the store based on given criteria.
@@ -501,12 +513,21 @@ class Store(StoreModel, Generic[V, Raise]):
             for key in store.iterate_keys(prefix="dataset1", glob="*.pdf"):
                 data = store.get(key, mode="raw")
                 parse(data)
+
+            # only the keys directly within "dataset1", not below it
+            for key in store.iterate_keys(prefix="dataset1", depth=1):
+                ...
             ```
 
         Args:
             prefix: Include only keys with the given prefix (e.g. "foo/bar")
             exclude_prefix: Exclude keys with this prefix
             glob: Path-style glob pattern for keys to filter (e.g. "foo/**/*.json")
+            depth: Include only keys with at most this many path segments,
+                relative to `prefix` (e.g. `depth=1` are the keys directly
+                within it). Backends that can limit their listing do so, which
+                is what makes a shallow listing cheap rather than a filtered
+                deep one.
 
         Returns:
             The matching keys as a generator of strings
@@ -517,17 +538,23 @@ class Store(StoreModel, Generic[V, Raise]):
             base = self._keys.key_prefix
 
         if hasattr(self._fs, "iter_find"):
-            keys = self._fs.iter_find(base, glob=glob)
+            keys = self._fs.iter_find(base, glob=glob, depth=depth)
         elif glob:
-            keys = self._fs.glob(f"{base}/{glob}")
+            keys = self._fs.glob(f"{base}/{glob}", maxdepth=depth)
         else:
             try:
-                keys = self._fs.find(base)
+                keys = self._fs.find(base, maxdepth=depth)
             except FileNotFoundError:
                 return
+        base_prefix = prefix.strip("/") if prefix else ""
         for key in keys:
             rel = self._keys.from_fs_key(key)
             if exclude_prefix and rel.startswith(exclude_prefix):
+                continue
+            # backends disagree on what a listing limit means (fsspec's
+            # `maxdepth` counts levels walked, `glob` derives one from the
+            # pattern), so the guarantee is enforced here for all of them
+            if depth is not None and _key_depth(rel, base_prefix) > depth:
                 continue
             yield rel
 
@@ -536,6 +563,7 @@ class Store(StoreModel, Generic[V, Raise]):
         prefix: str | None = None,
         exclude_prefix: str | None = None,
         glob: str | None = None,
+        depth: int | None = None,
         serialization_mode: Mode | None = None,
         deserialization_func: Callable | None = None,
         model: Model | None = None,
@@ -554,6 +582,9 @@ class Store(StoreModel, Generic[V, Raise]):
             prefix: Include only keys with the given prefix (e.g. "foo/bar")
             exclude_prefix: Exclude keys with this prefix
             glob: Path-style glob pattern for keys to filter (e.g. "foo/**/*.json")
+            depth: Include only keys with at most this many path segments,
+                relative to `prefix`. See
+                [`iterate_keys`][anystore.store.base.Store.iterate_keys]
             serialization_mode: Serialize result ("auto", "raw", "pickle",
                 "json"), overrides store settings
             deserialization_func: Specific function to use (ignores
@@ -567,7 +598,7 @@ class Store(StoreModel, Generic[V, Raise]):
         Returns:
             The matching values as a generator of any (serialized) type
         """
-        for key in self.iterate_keys(prefix, exclude_prefix, glob):
+        for key in self.iterate_keys(prefix, exclude_prefix, glob, depth):
             value = self.get(
                 key,
                 serialization_mode=serialization_mode,

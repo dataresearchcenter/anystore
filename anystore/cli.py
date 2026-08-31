@@ -91,6 +91,10 @@ def cli_keys(
     exclude_prefix: Annotated[
         Optional[str], typer.Option(..., help="Exclude key prefix")
     ] = None,
+    depth: Annotated[
+        Optional[int],
+        typer.Option(..., help="Max key path segments relative to prefix"),
+    ] = None,
     info: Annotated[Optional[bool], typer.Option(..., help="Print metadata")] = False,
 ):
     """
@@ -100,7 +104,7 @@ def cli_keys(
         S = get_store(uri=state["uri"])
         with smart_open(o, "wb") as out:
             for key in S.iterate_keys(
-                prefix=prefix, exclude_prefix=exclude_prefix, glob=glob
+                prefix=prefix, exclude_prefix=exclude_prefix, glob=glob, depth=depth
             ):
                 if info:
                     data = S.info(key)

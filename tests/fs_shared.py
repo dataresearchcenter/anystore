@@ -15,7 +15,9 @@ def test_pipe_and_cat(fs, key):
     assert fs.cat_file(key("hello")) == b"world"
 
 
-def test_cat_file_slice(fs, key):
+def test_cat_file_slice(fs, key, supports_ranges):
+    if not supports_ranges:
+        pytest.skip("backend does not serve http range requests")
     fs.pipe_file(key("slice"), b"abcdef")
     assert fs.cat_file(key("slice"), start=1, end=4) == b"bcd"
 
@@ -104,7 +106,9 @@ def test_find(fs, key):
     assert key("other") not in found
 
 
-def test_open_seek_read(fs, key):
+def test_open_seek_read(fs, key, supports_ranges):
+    if not supports_ranges:
+        pytest.skip("backend does not serve http range requests")
     fs.pipe_file(key("seekdata"), b"abcdefghij")
     with fs.open(key("seekdata"), "rb") as fh:
         fh.seek(3)
@@ -120,7 +124,9 @@ def test_open_read_chunks(fs, key):
         assert fh.read(3) == b"9"
 
 
-def test_cat_file_range(fs, key):
+def test_cat_file_range(fs, key, supports_ranges):
+    if not supports_ranges:
+        pytest.skip("backend does not serve http range requests")
     fs.pipe_file(key("ranged"), b"abcdefghij")
     assert fs.cat_file(key("ranged"), start=2, end=6) == b"cdef"
 

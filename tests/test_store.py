@@ -1,20 +1,17 @@
-import threading
 import time
 from datetime import datetime, timezone
 
 import fsspec
 import pytest
-import uvicorn
 from fsspec.implementations.http import HTTPFileSystem
 from fsspec.implementations.local import LocalFileSystem
 from fsspec.implementations.memory import MemoryFileSystem
 from moto import mock_aws
+from putfs.client.fs import PutFSFileSystem
 from rigour.mime import PLAIN
 from s3fs.core import S3FileSystem
 
-from anystore.api import create_app
 from anystore.exceptions import DoesNotExist
-from anystore.fs.api import ApiFileSystem
 from anystore.fs.local import AnyLocalFileSystem
 from anystore.fs.redis import RedisFileSystem
 from anystore.fs.sql import SqlFileSystem
@@ -86,6 +83,23 @@ def _test_store(fixtures_path, uri: str) -> bool:
     assert len(keys) == 4
     keys = [k for k in store.iterate_keys(prefix="foo", exclude_prefix="foo/bar")]
     assert len(keys) == 0
+    # depth: `foo/bar/baz` is the only key deeper than one segment
+    keys = [k for k in store.iterate_keys(depth=1)]
+    assert len(keys) == 4
+    assert "foo/bar/baz" not in keys
+    keys = [k for k in store.iterate_keys(depth=2)]
+    assert len(keys) == 4
+    keys = [k for k in store.iterate_keys(depth=3)]
+    assert len(keys) == 5
+    assert "foo/bar/baz" in keys
+    # depth counts from `prefix`, not from the store root
+    keys = [k for k in store.iterate_keys(prefix="foo", depth=1)]
+    assert len(keys) == 0
+    keys = [k for k in store.iterate_keys(prefix="foo", depth=2)]
+    assert keys == ["foo/bar/baz"]
+    # depth combines with the other filters
+    keys = [k for k in store.iterate_keys(depth=3, exclude_prefix="foo")]
+    assert len(keys) == 4
     # glob
     keys = [k for k in store.iterate_keys(glob="*/bar/*")]
     assert len(keys) == 1
@@ -255,25 +269,12 @@ def test_store_memory(fixtures_path):
     assert _test_store(fixtures_path, "memory://")
 
 
-def test_store_api(fixtures_path):
-    store = get_store("memory://test-api")
-    app = create_app(store=store)
-    config = uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning")
-    server = uvicorn.Server(config)
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    while not server.started:
-        pass
-    host, port = server.servers[0].sockets[0].getsockname()
-    uri = f"anystore+http://{host}:{port}"
-    try:
-        api_store = get_store(uri)
-        assert isinstance(api_store._fs, ApiFileSystem)
-        assert isinstance(api_store._fs, HTTPFileSystem)
-        assert _test_store(fixtures_path, uri)
-    finally:
-        server.should_exit = True
-        thread.join(timeout=5)
+def test_store_putfs(fixtures_path, putfs_server):
+    uri = f"putfs://{putfs_server.split('://', 1)[1]}"
+    store = get_store(uri)
+    assert isinstance(store._fs, PutFSFileSystem)
+    assert isinstance(store._fs, HTTPFileSystem)
+    assert _test_store(fixtures_path, uri)
 
 
 def test_store_fs(tmp_path, fixtures_path):
@@ -323,7 +324,7 @@ def test_store_initialize(tmp_path, fixtures_path):
     # postgresql/mysql resolve to SqlFileSystem but need their drivers installed
     assert fsspec.get_filesystem_class("postgresql") is SqlFileSystem
     assert fsspec.get_filesystem_class("mysql") is SqlFileSystem
-    assert isinstance(get_store("anystore+http://localhost")._fs, ApiFileSystem)
+    assert isinstance(get_store("putfs://localhost")._fs, PutFSFileSystem)
 
     # raise missing dependencies
     with pytest.raises(ImportError) as err:

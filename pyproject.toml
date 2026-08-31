@@ -14,7 +14,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
 ]
-requires-python = ">=3.11,<4"
+requires-python = ">=3.11,<3.15"
 dependencies = [
     "banal (>=1.1.2,<2.0.0)",
     "orjson (>=3.12.0,<4.0.0)",
@@ -37,14 +37,8 @@ dependencies = [
 s3 = ["s3fs (>2023.10,<2027)"]
 sql = ["sqlalchemy (>=2.0.52,<3.0.0)"]
 redis = ["redis (>=8.1.0)", "fakeredis (>=2.37.1,<3.0.0)"]
-# poetry cannot resolve the same extra-dependency (fsspec[http]) in more than
-# one group, so `api` mirrors it via aiohttp (the sole content of fsspec[http])
-api = [
-    "fastapi (>=0.141.1,<1.0.0)",
-    "uvicorn (>=0.52.4,<1.0.0)",
-    "aiohttp (!=4.0.0a0,!=4.0.0a1)",
-]
 http = ["fsspec[http] (>2023.10,<2027)"]
+putfs = ["putfs (>=0.4.0,<0.5.0)"]
 
 [project.scripts]
 anystore = "anystore.cli:cli"
@@ -57,8 +51,6 @@ sqlite = "anystore.fs.sql.SqlFileSystem"
 mysql = "anystore.fs.sql.SqlFileSystem"
 postgresql = "anystore.fs.sql.SqlFileSystem"
 redis = "anystore.fs.redis.RedisFileSystem"
-"anystore+http" = "anystore.fs.api:ApiFileSystem"
-"anystore+https" = "anystore.fs.api:ApiFileSystem"
 
 [project.urls]
 Homepage = "https://docs.investigraph.dev/lib/anystore"
@@ -94,3 +86,5 @@ REDIS_DEBUG = 1
 DEBUG = 1
 ANYSTORE_YAML_URI = "./tests/fixtures/store.yml"
 FSSPEC_S3_ENDPOINT_URL = "http://localhost:8888"
+# putfs.client.fs binds its ClientSettings at import time
+PUTFS_HTTPS = 0

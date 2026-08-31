@@ -81,6 +81,54 @@ def test_iter_find_single_file(tree):
     assert list(fs.iter_find(target)) == [target]
 
 
+# -- iter_find with depth -----------------------------------------------------
+
+
+def test_iter_find_depth(tree):
+    """`depth` is the most path segments a yielded key may have."""
+    fs = AnyLocalFileSystem()
+
+    def names(**kwargs):
+        return sorted(
+            os.path.relpath(p, tree) for p in fs.iter_find(str(tree), **kwargs)
+        )
+
+    assert names(depth=1) == ["a.txt", "b.json"]
+    assert names(depth=2) == ["a.txt", "b.json", os.path.join("sub", "c.txt")]
+    assert names(depth=3) == names()
+    assert len(names(depth=3)) == 5
+
+
+def test_iter_find_depth_combines_with_glob(tree):
+    fs = AnyLocalFileSystem()
+    # the glob alone would also match sub/deep/e.json
+    assert list(fs.iter_find(str(tree), glob="**/*.json", depth=1)) == [
+        str(tree / "b.json")
+    ]
+
+
+def test_iter_find_depth_does_not_descend(tree, monkeypatch):
+    """A shallow listing must not walk the deep tree it excludes."""
+    fs = AnyLocalFileSystem()
+    walked = []
+    real_walk = os.walk
+
+    def counting_walk(path, *args, **kwargs):
+        for entry in real_walk(path, *args, **kwargs):
+            walked.append(entry[0])
+            yield entry
+
+    monkeypatch.setattr(os, "walk", counting_walk)
+    list(fs.iter_find(str(tree), depth=1))
+    assert walked == [str(tree)]
+
+
+def test_iter_find_depth_single_file(tree):
+    fs = AnyLocalFileSystem()
+    target = str(tree / "a.txt")
+    assert list(fs.iter_find(target, depth=1)) == [target]
+
+
 # -- iter_find with glob ------------------------------------------------------
 
 
@@ -163,3 +211,23 @@ def test_iterate_keys_prefix_and_glob(local_store):
 def test_iterate_keys_nonexistent_prefix(local_store):
     keys = list(local_store.iterate_keys(prefix="nonexistent"))
     assert keys == []
+
+
+def test_iterate_keys_depth(local_store):
+    assert set(local_store.iterate_keys(depth=1)) == {"a.txt", "b.json"}
+    assert set(local_store.iterate_keys(depth=2)) == {"a.txt", "b.json", "sub/c.txt"}
+    assert len(set(local_store.iterate_keys(depth=3))) == 5
+
+
+def test_iterate_keys_depth_is_relative_to_prefix(local_store):
+    # "sub/c.txt" is two segments from the store root but one from "sub"
+    assert set(local_store.iterate_keys(prefix="sub", depth=1)) == {"sub/c.txt"}
+    assert set(local_store.iterate_keys(prefix="sub", depth=2)) == {
+        "sub/c.txt",
+        "sub/deep/d.txt",
+        "sub/deep/e.json",
+    }
+
+
+def test_iterate_keys_depth_and_glob(local_store):
+    assert set(local_store.iterate_keys(glob="**/*.json", depth=1)) == {"b.json"}
