@@ -3721,15 +3721,15 @@ tests = ["pytest"]
 
 [[package]]
 name = "putfs"
-version = "0.4.0"
+version = "0.4.2"
 description = "Efficient HTTP blob storage over local filesystem"
 optional = true
 python-versions = "<3.15,>=3.11"
 groups = ["main"]
 markers = "extra == \"putfs\""
 files = [
-    {file = "putfs-0.4.0-py3-none-any.whl", hash = "sha256:81cbe32ee918990c605ada77a4c23afae834b154f15bfac0370cfd3e88dc3b67"},
-    {file = "putfs-0.4.0.tar.gz", hash = "sha256:3479d33b0422518e7d5c2f7c6f5d1cd550328230a0d4de73a62d8a9246171515"},
+    {file = "putfs-0.4.2-py3-none-any.whl", hash = "sha256:65d089e096d407c6701f023525ba72fd63e84e3617741a5e871c4c39b3f9cb03"},
+    {file = "putfs-0.4.2.tar.gz", hash = "sha256:34ec7a26fb8e304f3312dcb33b19b43bdce2b4662050c44515581add70857a1d"},
 ]
 
 [package.dependencies]
@@ -3739,7 +3739,7 @@ starlette = ">=1.6.0,<2.0.0"
 uvloop = ">=0.22.1,<0.23.0"
 
 [package.extras]
-client = ["anystore[http] (>=1.2.7,<2.0.0)", "tqdm (>=4.70.0,<5.0.0)"]
+client = ["anystore[http] (>=1.3.0,<2.0.0)", "tqdm (>=4.70.0,<5.0.0)"]
 
 [[package]]
 name = "py-partiql-parser"
@@ -5728,4 +5728,4 @@ sql = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "9fef56316f02586634f63b253ea4227804c08c5d85145afbc587f68a4c0d489a"
+content-hash = "466a6cc0f135d89bac8a75c9fe8238c48a6bdf3facc6cc7ce980d9ec5d011afe"
