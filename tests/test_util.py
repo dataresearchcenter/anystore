@@ -63,6 +63,7 @@ def test_util_uris():
     assert join_uri("http://example.org", "foo") == "http://example.org/foo"
     assert join_uri("http://example.org/", "foo") == "http://example.org/foo"
     assert join_uri("/tmp", "foo") == "file:///tmp/foo"
+    assert join_uri("/tmp", Path("foo")) == "file:///tmp/foo"
     assert join_uri(Path("./foo"), "bar").startswith("file:///")
     assert join_uri(Path("./foo"), "bar").endswith("foo/bar")
     assert join_uri("s3://foo/bar", "./baz.txt") == "s3://foo/bar/baz.txt"

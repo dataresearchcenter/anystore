@@ -126,7 +126,7 @@ def make_uri(uri: Uri, **kwargs) -> UriHandler:
     return UriHandler(uri, **kwargs)
 
 
-def join_uri(uri: Any, path: str) -> str:
+def join_uri(uri: Uri, path: Uri) -> str:
     """
     Ensure correct joining of arbitrary uris with a path.
 
@@ -136,7 +136,7 @@ def join_uri(uri: Any, path: str) -> str:
         assert util.join_uri("http://example.org/", "foo") == "http://example.org/foo"
         assert util.join_uri("/tmp", "foo") == "file:///tmp/foo"
         assert util.join_uri(Path("./foo"), "bar").startswith("file:///")
-        assert util.join_uri(Path("./foo"), "bar").endswith("foo/bar")
+        assert util.join_uri(Path("./foo"), Path("bar")).endswith("foo/bar")
         assert util.join_uri("s3://foo/bar.pdf", "../baz.txt") == "s3://foo/baz.txt"
         assert util.join_uri("redis://foo/bar.pdf", "../baz.txt") == "redis://foo/baz.txt"
         ```
@@ -154,6 +154,7 @@ def join_uri(uri: Any, path: str) -> str:
     uri = ensure_uri(uri)
     if not uri or uri == "-":
         raise ValueError(f"Invalid uri: `{uri}`")
+    path = str(path)
     if path == CURRENT:
         return uri
     # Normalize path: strip leading slashes, remove "." segments
