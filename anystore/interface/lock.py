@@ -1,5 +1,6 @@
 from anystore.decorators import error_handler
 from anystore.store import Store
+from anystore.types import Uri
 
 
 class Lock:
@@ -25,7 +26,7 @@ class Lock:
     def __init__(
         self,
         store: Store,
-        key: str | None = ".LOCK",
+        key: Uri | None = ".LOCK",
         max_retries: float | None = float("inf"),
     ) -> None:
         self.store = store

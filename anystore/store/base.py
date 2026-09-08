@@ -499,8 +499,8 @@ class Store(StoreModel, Generic[V, Raise]):
 
     def iterate_keys(
         self,
-        prefix: str | None = None,
-        exclude_prefix: str | None = None,
+        prefix: Uri | None = None,
+        exclude_prefix: Uri | None = None,
         glob: str | None = None,
         depth: int | None = None,
     ) -> Generator[str, None, None]:
@@ -546,10 +546,10 @@ class Store(StoreModel, Generic[V, Raise]):
                 keys = self._fs.find(base, maxdepth=depth)
             except FileNotFoundError:
                 return
-        base_prefix = prefix.strip("/") if prefix else ""
+        base_prefix = str(prefix).strip("/") if prefix else ""
         for key in keys:
             rel = self._keys.from_fs_key(key)
-            if exclude_prefix and rel.startswith(exclude_prefix):
+            if exclude_prefix and rel.startswith(str(exclude_prefix)):
                 continue
             # backends disagree on what a listing limit means (fsspec's
             # `maxdepth` counts levels walked, `glob` derives one from the
@@ -631,7 +631,7 @@ class Store(StoreModel, Generic[V, Raise]):
 
     def open(
         self, key: Uri, mode: str | None = DEFAULT_MODE, **kwargs: Any
-    ) -> ContextManager[IO]:
+    ) -> ContextManager[IO[Any]]:
         """
         Open the given key similar to built-in `open()`
 
