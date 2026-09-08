@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import sys
 from io import BytesIO, IOBase, StringIO
-from typing import IO, Any, AnyStr, BinaryIO, Generator, TextIO
+from typing import IO, Any, BinaryIO, Generator, TextIO
 
 from anystore.exceptions import DoesNotExist
 from anystore.logic.compress import CompressKind, binary_mode, open_codec
@@ -41,7 +41,7 @@ class SmartHandler:
         self.kwargs = kwargs
         self.handler: IO | None = None
 
-    def open(self) -> IO[AnyStr]:
+    def open(self) -> IO[Any]:
         try:
             if self.is_buffer:
                 return self._wrap(self.sys_io)
@@ -88,7 +88,7 @@ def smart_open(
     mode: str | None = DEFAULT_MODE,
     compression: CompressKind | str | None = None,
     **kwargs: Any,
-) -> Generator[IO[AnyStr], None, None]:
+) -> Generator[IO[Any], None, None]:
     """
     IO context similar to pythons built-in `open()`.
 
@@ -104,7 +104,8 @@ def smart_open(
         uri: string or path-like key uri to open, e.g. `./local/data.txt` or
             `s3://mybucket/foo`
         mode: open mode, default `rb` for byte reading.
-        compression: Codec to (de-)compress the stream with ("gz", "zst")
+        compression: Codec to (de-)compress the stream with ("gz", "bz2",
+            "xz", "zst", "lz4")
         **kwargs: pass through storage-specific options
 
     Yields:

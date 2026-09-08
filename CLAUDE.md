@@ -58,7 +58,7 @@ make documentation
 Layer 0:  types, exceptions
 Layer 1:  settings
 Layer 2:  logging
-Layer 3:  logic/        — pure business logic (constants, serialize, uri, io, virtual)
+Layer 3:  logic/        — pure business logic (constants, serialize, uri, io, virtual, compress)
 Layer 4:  util/         — checksum, data helpers, misc
 Layer 5:  model/        — pydantic models (StoreModel, Info, Stats, BaseModel)
 Layer 6:  fs/           — custom fsspec filesystem implementations
@@ -77,6 +77,7 @@ imports (e.g. `logic/io.py` type-hints `Store`).
 ### Package Layout
 
 - **`logic/`** — Pure business logic, no store/fs dependencies
+  - `compress.py` — `CompressKind`, `open_codec` (codecs layered inside `Store.open`)
   - `constants.py` — `CHUNK_SIZE` (from `shutil.COPY_BUFSIZE`), `DEFAULT_MODE`, scheme constants
   - `io.py` — `stream`, `stream_bytes`, `iter_lines` (low-level I/O primitives)
   - `serialize.py` — Serialization modes (`auto`, `json`, `pickle`, `raw`)

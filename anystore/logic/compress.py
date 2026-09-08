@@ -13,6 +13,13 @@ with store.open("entities.json.zst", "wb", compression="zst") as fh:
     fh.write(b"...")
 ```
 
+`CompressKind` names what can go in there: `gz`, `bz2`, `xz` and `zst` come
+from the standard library, `lz4` from the optional ``lz4`` extra – a missing
+one surfaces as an `ImportError` naming the extra, the same way an optional
+storage backend does. The spellings other tools use are accepted as aliases,
+so a codec read off a pandas or fsspec call (``"gzip"``, ``"zstd"``) or off a
+file name (``".xz"``) needs no translation.
+
 The codec is always **binary** – a frame is bytes – so the handle underneath
 is opened ``"rb"`` / ``"wb"`` whatever the caller asked for, and a text mode
 becomes a `io.TextIOWrapper` layered on *top* of the codec, which is what
@@ -31,62 +38,151 @@ The codec is never inferred from the key's extension. A file *named* ``.gz``
 that is not gzipped would fail confusingly, and a caller that compresses
 always knows it did.
 
-``compression.zstd`` only exists on Python 3.14+, so older interpreters pull
-`backports.zstd` – the backport of the very same module, guarded by a
-``python_version<'3.14'`` marker – and get byte-identical frames.
+Every codec class is imported on first use, not at module import: `lzma`
+needs a liblzma the interpreter may have been built without, and `lz4` may
+not be installed at all, neither of which should cost an unrelated caller
+anything. ``compression.zstd`` only exists on Python 3.14+, so older
+interpreters pull `backports.zstd` – the backport of the very same module,
+guarded by a ``python_version<'3.14'`` marker – and get byte-identical
+frames.
 """
 
 from __future__ import annotations
 
 import sys
 from enum import StrEnum
+from functools import cache
 from gzip import GzipFile
 from io import TextIOWrapper
-from typing import IO, Any, cast
+from typing import IO, Any, Callable, cast
 
 from anystore.logic.constants import DEFAULT_MODE
-
-if sys.version_info >= (3, 14):
-    from compression.zstd import ZstdFile
-else:
-    from backports.zstd import ZstdFile
 
 
 class CompressKind(StrEnum):
     """Codecs anystore can (de-)compress a stream with."""
 
     gz = "gz"
+    bz2 = "bz2"
+    xz = "xz"
     zst = "zst"
+    lz4 = "lz4"
+
+    @classmethod
+    def _missing_(cls, value: object) -> CompressKind | None:
+        """Accept how the rest of the world spells these: `gzip`, `.xz`, `zstd`."""
+        if not isinstance(value, str):
+            return None
+        name = value.strip().lower().lstrip(".")
+        member = cls._value2member_map_.get(ALIASES.get(name, name))
+        return cast("CompressKind | None", member)
 
 
-class _OwningGzipFile(GzipFile):
-    """A gzip frame that closes the handle it was opened on."""
+ALIASES = {
+    "gzip": "gz",
+    "bzip2": "bz2",
+    "bz": "bz2",
+    "lzma": "xz",
+    "zstd": "zst",
+    "zstandard": "zst",
+    "lz4frame": "lz4",
+}
+
+
+class _GzipFrame(GzipFile):
+    """`GzipFile` behind the `(handle, mode)` signature the other codecs share."""
 
     def __init__(self, fh: IO[bytes], mode: str) -> None:
-        self._fh = fh
-        # mtime=0 keeps the output byte-identical across runs for identical
-        # payloads; the header would otherwise embed the current time
-        super().__init__(fileobj=fh, mode=mode, mtime=0)
-
-    def close(self) -> None:
-        try:
-            super().close()
-        finally:
-            self._fh.close()
+        # mtime=0 and an empty filename keep the output byte-identical across
+        # runs for identical payloads; the header would otherwise embed the
+        # current time, and the name gzip reads off the handle it was given –
+        # which for a local store is the file being written
+        super().__init__(filename="", fileobj=fh, mode=mode, mtime=0)
 
 
-class _OwningZstdFile(ZstdFile):
-    """A zstd frame that closes the handle it was opened on."""
+def _load_gz() -> type[Any]:
+    return _GzipFrame
 
-    def __init__(self, fh: IO[bytes], mode: str) -> None:
-        self._fh = fh
-        super().__init__(fh, mode)
 
-    def close(self) -> None:
-        try:
-            super().close()
-        finally:
-            self._fh.close()
+def _load_bz2() -> type[Any]:
+    from bz2 import BZ2File
+
+    return BZ2File
+
+
+def _load_xz() -> type[Any]:
+    from lzma import LZMAFile
+
+    return LZMAFile
+
+
+def _load_zst() -> type[Any]:
+    if sys.version_info >= (3, 14):
+        from compression.zstd import ZstdFile
+    else:
+        from backports.zstd import ZstdFile
+
+    return ZstdFile
+
+
+def _load_lz4() -> type[Any]:
+    try:
+        from lz4.frame import LZ4FrameFile  # type: ignore[import-untyped]
+    except ImportError:
+        raise ImportError(
+            'lz4 compression requires the "lz4" extra: `pip install anystore[lz4]`'
+        ) from None
+
+    return cast("type[Any]", LZ4FrameFile)
+
+
+CODECS: dict[CompressKind, Callable[[], type[Any]]] = {
+    CompressKind.gz: _load_gz,
+    CompressKind.bz2: _load_bz2,
+    CompressKind.xz: _load_xz,
+    CompressKind.zst: _load_zst,
+    CompressKind.lz4: _load_lz4,
+}
+
+
+def _owning(codec: type[Any]) -> type[Any]:
+    """A codec class whose close reaches the handle it was opened on.
+
+    Built on demand rather than eagerly per codec; `get_codec` memoizes the
+    result, so a class is created once.
+    """
+
+    class Owning(codec):  # type: ignore[misc]
+        def __init__(self, fh: IO[bytes], mode: str) -> None:
+            self._source = fh
+            super().__init__(fh, mode)
+
+        def close(self) -> None:
+            try:
+                super().close()
+            finally:
+                self._source.close()
+
+    Owning.__name__ = Owning.__qualname__ = f"Owning{codec.__name__}"
+    return Owning
+
+
+@cache
+def get_codec(kind: CompressKind, own: bool = False) -> type[Any]:
+    """The file class for a codec, constructed as ``cls(handle, binary_mode)``.
+
+    Args:
+        kind: The codec to get.
+        own: Get the variant that closes the handle it was opened on.
+
+    Returns:
+        The class to layer over a binary handle.
+
+    Raises:
+        ImportError: The codec's optional dependency is not installed.
+    """
+    codec = CODECS[kind]()
+    return _owning(codec) if own else codec
 
 
 def binary_mode(mode: str | None = DEFAULT_MODE) -> str:
@@ -115,8 +211,9 @@ def open_codec(
         fh: Open **binary** handle, positioned at the start of the frame.
             Reading is forward-only, so a non-seekable source (an http
             response body) works.
-        compression: Codec to apply. ``None`` layers nothing, so an
-            uncompressed caller runs through the same call without branching.
+        compression: Codec to apply, a `CompressKind` or one of its aliases.
+            ``None`` layers nothing, so an uncompressed caller runs through
+            the same call without branching.
         mode: The mode of the *returned* stream. Only its text-ness is read –
             ``"r"`` / ``"w"`` hand back ``str``, ``"rb"`` / ``"wb"`` ``bytes``;
             the direction comes from ``fh``.
@@ -127,6 +224,10 @@ def open_codec(
         The stream to read or write through. It **must** be closed – use it
         as a context manager – or the codec's trailer is never written. With
         no ``compression`` and a binary ``mode`` this is ``fh`` itself.
+
+    Raises:
+        ValueError: `compression` doesn't name a codec.
+        ImportError: The codec's optional dependency is not installed.
     """
     mode = mode or DEFAULT_MODE
     if compression is None:
@@ -134,17 +235,10 @@ def open_codec(
         # `open()`'s own business, and wrapping here would take ownership of a
         # handle this call did not open
         return cast(IO[Any], fh)
-    kind = CompressKind(compression)
-    direction = binary_mode(mode)
-    if kind == CompressKind.zst:
-        codec = _OwningZstdFile(fh, direction) if own else ZstdFile(fh, direction)
-    elif own:
-        codec = _OwningGzipFile(fh, direction)
-    else:
-        codec = GzipFile(fileobj=fh, mode=direction, mtime=0)
-    # both codecs model as BufferedIOBase rather than IO[bytes], although they
-    # implement its full surface (read / write / fileno / iteration)
-    stream = cast(IO[Any], codec)
+    codec = get_codec(CompressKind(compression), own)
+    # the codec classes model as BufferedIOBase rather than IO[bytes], although
+    # they implement its full surface (read / write / fileno / iteration)
+    stream = cast(IO[Any], codec(fh, binary_mode(mode)))
     if "b" in mode:
         return stream
     # a TextIOWrapper closes what it wraps, so the codec's trailer is flushed

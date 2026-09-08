@@ -660,7 +660,8 @@ class Store(StoreModel, Generic[V, Raise]):
         Args:
             key: Key relative to store base uri
             mode: Open mode ("rb", "wb", "r", "w")
-            compression: Codec to (de-)compress the stream with ("gz", "zst").
+            compression: Codec to (de-)compress the stream with ("gz", "bz2",
+                "xz", "zst", "lz4").
                 The handle underneath is then always binary and `mode` only
                 decides whether this call hands back `str` or `bytes`.
             **kwargs: Pass through arguments to backend

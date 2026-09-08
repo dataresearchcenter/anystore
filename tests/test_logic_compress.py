@@ -9,14 +9,21 @@ rather than each sandwiching their own.
 
 import csv
 import io
+import sys
 
 import pytest
 
 from anystore.io import Writer, smart_open, smart_read
-from anystore.logic.compress import CompressKind, binary_mode, open_codec
+from anystore.logic.compress import CompressKind, binary_mode, get_codec, open_codec
 from anystore.store import get_store
 
-MAGIC = {CompressKind.gz: b"\x1f\x8b", CompressKind.zst: b"\x28\xb5\x2f\xfd"}
+MAGIC = {
+    CompressKind.gz: b"\x1f\x8b",
+    CompressKind.bz2: b"BZh",
+    CompressKind.xz: b"\xfd7zXZ\x00",
+    CompressKind.zst: b"\x28\xb5\x2f\xfd",
+    CompressKind.lz4: b"\x04\x22\x4d\x18",
+}
 
 
 class Recording(io.BytesIO):
@@ -46,7 +53,16 @@ class NonSeekable(io.RawIOBase):
         return False
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
+@pytest.fixture(params=list(CompressKind))
+def algorithm(request):
+    """Every codec anystore knows – minus any whose extra isn't installed."""
+    try:
+        get_codec(request.param)
+    except ImportError as e:
+        pytest.skip(str(e))
+    return request.param
+
+
 def test_compress_roundtrip(algorithm):
     payload = b'{"id":"jane"}\n' * 1_000
     raw = io.BytesIO()
@@ -59,7 +75,6 @@ def test_compress_roundtrip(algorithm):
         assert fh.read() == payload
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
 def test_compress_streams_without_seeking(algorithm):
     """A frame decompresses off a forward-only source – an http body needs no
     temp file."""
@@ -71,13 +86,12 @@ def test_compress_streams_without_seeking(algorithm):
         assert fh.read() == payload
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
 def test_compress_unclosed_frame_is_truncated(algorithm):
-    """Why closing is mandatory rather than tidy."""
+    """Why closing is mandatory rather than tidy: a codec buffers, and its
+    trailer is only written on close."""
     raw = io.BytesIO()
     out = open_codec(raw, algorithm, "wb")
     out.write(b"payload" * 1000)
-    out.flush()
     truncated = raw.getvalue()
     out.close()
     assert len(truncated) < len(raw.getvalue())
@@ -91,7 +105,6 @@ def test_compress_none_passes_the_handle_through():
     assert open_codec(raw, None, "w") is raw
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
 def test_compress_ownership(algorithm):
     """`own` is what decides whether a close reaches the handle underneath."""
     borrowed = io.BytesIO()
@@ -105,7 +118,6 @@ def test_compress_ownership(algorithm):
     assert owned.closed
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
 def test_compress_text_mode_writes_the_frame_first(algorithm):
     """A text stream is a decoder *over* the codec, so closing it flushes the
     text buffer, then the frame, then the handle – in that order."""
@@ -121,6 +133,30 @@ def test_compress_text_mode_writes_the_frame_first(algorithm):
     assert rows == [{"a": "x", "b": "multi\nline"}]
 
 
+def test_compress_kind_aliases():
+    """A codec stays nameable the way the rest of the world spells it, so a
+    value read off an fsspec/pandas call or a file extension needs no
+    translation on the way in."""
+    assert CompressKind("gzip") == CompressKind(".gz") == CompressKind.gz
+    assert CompressKind("BZip2") == CompressKind.bz2
+    assert CompressKind("lzma") == CompressKind.xz
+    assert CompressKind("zstandard") == CompressKind.zst
+    with pytest.raises(ValueError):
+        CompressKind("brotli")
+
+
+def test_compress_missing_extra(monkeypatch):
+    """A codec whose optional dependency is missing says which extra to
+    install, instead of a bare ModuleNotFoundError from three layers down."""
+    monkeypatch.setitem(sys.modules, "lz4.frame", None)
+    get_codec.cache_clear()
+    try:
+        with pytest.raises(ImportError, match='"lz4" extra'):
+            open_codec(io.BytesIO(), "lz4", "wb")
+    finally:
+        get_codec.cache_clear()
+
+
 def test_binary_mode():
     assert binary_mode("r") == "rb"
     assert binary_mode("rb") == "rb"
@@ -130,7 +166,6 @@ def test_binary_mode():
     assert binary_mode(None) == "rb"
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
 def test_store_open_compression(tmp_path, algorithm):
     """The funnel: one kwarg on `Store.open`, and the bytes on disk are a
     frame while the caller only ever saw the payload."""
@@ -143,7 +178,6 @@ def test_store_open_compression(tmp_path, algorithm):
         assert fh.read() == b'{"id":"jane"}\n'
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
 def test_store_open_compression_text(tmp_path, algorithm):
     store = get_store(str(tmp_path))
     with store.open("out.csv", "w", compression=algorithm) as fh:
@@ -152,7 +186,6 @@ def test_store_open_compression_text(tmp_path, algorithm):
         assert list(csv.DictReader(fh)) == [{"a": "1", "b": "2"}]
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
 def test_smart_open_compression(tmp_path, algorithm):
     """`smart_open` inherits it from `Store.open` – no second implementation,
     so the stream is encoded exactly once."""
@@ -164,7 +197,6 @@ def test_smart_open_compression(tmp_path, algorithm):
         assert fh.read() == b"hello"
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
 def test_smart_open_compression_injected_handle(algorithm):
     """A handle the caller passed in stays the caller's to close, but the
     codec over it is still flushed."""
@@ -175,7 +207,6 @@ def test_smart_open_compression_injected_handle(algorithm):
     assert handle.getvalue().startswith(MAGIC[algorithm])
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
 def test_writer_compression(tmp_path, algorithm):
     uri = str(tmp_path / "rows.json")
     with Writer(uri, output_format="json", compression=algorithm) as writer:
@@ -185,7 +216,6 @@ def test_writer_compression(tmp_path, algorithm):
         assert fh.read() == b'{"id":"jane"}\n'
 
 
-@pytest.mark.parametrize("algorithm", list(CompressKind))
 def test_writer_compression_csv(tmp_path, algorithm):
     uri = str(tmp_path / "rows.csv")
     with Writer(uri, output_format="csv", compression=algorithm) as writer:

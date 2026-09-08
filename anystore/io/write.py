@@ -176,7 +176,8 @@ class Writer:
         output_format: csv or json (default: json)
         fieldnames: csv header, inferred from the first row when omitted
         clean: Apply [clean_dict][anystore.util.data.clean_dict]
-        compression: Codec to compress the output with ("gz", "zst")
+        compression: Codec to compress the output with ("gz", "bz2", "xz",
+            "zst", "lz4")
         lazy: Defer creating the target to the first `write`, so a run that
             writes nothing leaves no file behind. Off by default – an empty
             csv carrying just its header is a legitimate thing to want.
