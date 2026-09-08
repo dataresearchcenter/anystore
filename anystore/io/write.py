@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import csv
 from enum import StrEnum
-from typing import Any, Iterable, Literal, Self
+from typing import IO, Any, Iterable, Literal, Self
 
 import orjson
 from pydantic import BaseModel
 
 from anystore.io.handler import SmartHandler, smart_open
+from anystore.logic.compress import CompressKind
 from anystore.logic.constants import DEFAULT_WRITE_MODE
 from anystore.logic.io import Uri
 from anystore.types import SDict
@@ -167,6 +168,19 @@ def smart_write_model(
 class Writer:
     """
     A generic writer for python dict objects to any out uri, either json or csv
+
+    Args:
+        uri: string or path-like key uri to write to, `"-"` for stdout, or an
+            already open handle
+        mode: open mode, default `wb` (forced to text for csv)
+        output_format: csv or json (default: json)
+        fieldnames: csv header, inferred from the first row when omitted
+        clean: Apply [clean_dict][anystore.util.data.clean_dict]
+        compression: Codec to compress the output with ("gz", "zst")
+        lazy: Defer creating the target to the first `write`, so a run that
+            writes nothing leaves no file behind. Off by default – an empty
+            csv carrying just its header is a legitimate thing to want.
+        **kwargs: pass through storage-specific options
     """
 
     def __init__(
@@ -176,24 +190,45 @@ class Writer:
         output_format: Formats | None = "json",
         fieldnames: list[str] | None = None,
         clean: bool | None = False,
+        compression: CompressKind | str | None = None,
+        lazy: bool | None = False,
         **kwargs,
     ) -> None:
         if output_format not in (FORMAT_JSON, FORMAT_CSV):
             raise ValueError("Invalid output format, only csv or json allowed")
         mode = mode or DEFAULT_WRITE_MODE
         self.mode = mode.replace("b", "") if output_format == "csv" else mode
-        self.handler = SmartHandler(uri, mode=self.mode, **kwargs)
+        self.handler = SmartHandler(
+            uri, mode=self.mode, compression=compression, **kwargs
+        )
         self.fieldnames = fieldnames
         self.output_format = output_format
         self.clean = clean
+        self.lazy = lazy
         self.csv_writer: csv.DictWriter | None = None
+        self._io: IO[Any] | None = None
+
+    def open(self) -> IO[Any]:
+        """The open target, created on first ask."""
+        if self._io is None:
+            self._io = self.handler.open()
+        return self._io
+
+    def close(self) -> None:
+        """Flush and close the target, if one was ever opened."""
+        self.handler.close()
+
+    @property
+    def io(self) -> IO[Any]:
+        return self.open()
 
     def __enter__(self) -> Self:
-        self.io = self.handler.open()
+        if not self.lazy:
+            self.open()
         return self
 
     def __exit__(self, *args) -> None:
-        self.handler.close()
+        self.close()
 
     def write(self, row: SDict) -> None:
         if self.output_format == "csv" and self.csv_writer is None:

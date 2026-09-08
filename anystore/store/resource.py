@@ -14,6 +14,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import IO, Any, Callable, ContextManager, Generator
 
+from anystore.logic.compress import CompressKind
 from anystore.logic.io import _is_seekable
 from anystore.logic.serialize import Mode
 from anystore.logic.uri import CURRENT, UriHandler
@@ -155,8 +156,13 @@ class UriResource(UriHandler):
     def delete(self, ignore_errors: bool = False) -> None:
         self.store.delete(self.key, ignore_errors=ignore_errors)
 
-    def open(self, mode: str | None = None, **kwargs: Any) -> ContextManager[IO]:
-        return self.store.open(self.key, mode=mode, **kwargs)
+    def open(
+        self,
+        mode: str | None = None,
+        compression: CompressKind | str | None = None,
+        **kwargs: Any,
+    ) -> ContextManager[IO]:
+        return self.store.open(self.key, mode=mode, compression=compression, **kwargs)
 
     def touch(self, **kwargs: Any) -> datetime:
         return self.store.touch(self.key, **kwargs)

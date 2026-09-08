@@ -24,6 +24,7 @@ import fsspec
 
 from anystore.exceptions import DoesNotExist
 from anystore.logging import get_logger
+from anystore.logic.compress import CompressKind, binary_mode, open_codec
 from anystore.logic.constants import DEFAULT_MODE
 from anystore.logic.io import iter_lines, stream_bytes
 from anystore.logic.serialize import Mode, from_store, to_store
@@ -630,10 +631,19 @@ class Store(StoreModel, Generic[V, Raise]):
             return make_checksum(io, algorithm or DEFAULT_HASH_ALGORITHM)
 
     def open(
-        self, key: Uri, mode: str | None = DEFAULT_MODE, **kwargs: Any
+        self,
+        key: Uri,
+        mode: str | None = DEFAULT_MODE,
+        compression: CompressKind | str | None = None,
+        **kwargs: Any,
     ) -> ContextManager[IO[Any]]:
         """
         Open the given key similar to built-in `open()`
+
+        This is the funnel every other IO surface reaches the backend through
+        ([`smart_open`][anystore.io.handler.smart_open],
+        [`Writer`][anystore.io.write.Writer], the `smart_stream_*` helpers),
+        so `compression` applied here covers all of them.
 
         Example:
             ```python
@@ -642,22 +652,35 @@ class Store(StoreModel, Generic[V, Raise]):
             store = get_store()
             with store.open("foo/bar.txt") as fh:
                 return fh.read()
+
+            with store.open("foo/bar.csv.zst", "w", compression="zst") as fh:
+                fh.write("a,b\n1,2\n")
             ```
 
         Args:
             key: Key relative to store base uri
             mode: Open mode ("rb", "wb", "r", "w")
+            compression: Codec to (de-)compress the stream with ("gz", "zst").
+                The handle underneath is then always binary and `mode` only
+                decides whether this call hands back `str` or `bytes`.
             **kwargs: Pass through arguments to backend
 
         Returns:
-            The open handler
+            The open handler. Closing it writes the codec trailer, so a
+            compressed stream must not be left open – use it as a context
+            manager.
         """
         mode = mode or DEFAULT_MODE
         kwargs = self.ensure_kwargs(**kwargs)
         key = self._keys.to_fs_key(key)
         if "w" in mode:
             self._ensure_parent(key)
-        return self._fs.open(key, mode=mode, **kwargs)
+        if compression is None:
+            return self._fs.open(key, mode=mode, **kwargs)
+        # a codec frame is bytes, so the backend handle is binary whatever the
+        # caller asked for; `own` because this call opened it
+        fh = self._fs.open(key, mode=binary_mode(mode), **kwargs)
+        return open_codec(fh, compression, mode, own=True)
 
     def touch(self, key: Uri, **kwargs: Any) -> datetime:
         """
