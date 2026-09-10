@@ -33,4 +33,4 @@ clean:
 
 documentation:
 	zensical build
-	aws --profile nbg1 --endpoint-url https://s3.investigativedata.org s3 sync ./site s3://docs.investigraph.dev/lib/anystore
+	putfs sync --overwrite ./site putfs://static.darc.zone/docs.investigraph.dev/lib/anystore
