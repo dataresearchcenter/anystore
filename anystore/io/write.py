@@ -210,10 +210,22 @@ class Writer:
         self._io: IO[Any] | None = None
 
     def open(self) -> IO[Any]:
-        """The open target, created on first ask."""
+        """The open target, created on first ask.
+
+        A csv whose header is known up front writes it here, so a writer that
+        never sees a row still leaves a complete – if empty – table instead of
+        a zero-byte file.
+        """
         if self._io is None:
             self._io = self.handler.open()
+            if self.output_format == FORMAT_CSV and self.fieldnames:
+                self._start_csv(self.fieldnames)
         return self._io
+
+    def _start_csv(self, fieldnames: Iterable[str]) -> None:
+        """Bind the csv writer to the open target and write its header."""
+        self.csv_writer = csv.DictWriter(self.io, fieldnames)
+        self.csv_writer.writeheader()
 
     def close(self) -> None:
         """Flush and close the target, if one was ever opened."""
@@ -232,11 +244,13 @@ class Writer:
         self.close()
 
     def write(self, row: SDict) -> None:
-        if self.output_format == "csv" and self.csv_writer is None:
-            self.csv_writer = csv.DictWriter(self.io, self.fieldnames or row.keys())
-            self.csv_writer.writeheader()
+        if self.output_format == FORMAT_CSV:
+            # opening starts the writer itself when the header is known up front
+            self.open()
+            if self.csv_writer is None:
+                self._start_csv(row.keys())
 
-        if self.output_format == "json":
+        if self.output_format == FORMAT_JSON:
             if self.clean:
                 row = clean_dict(row)
             line = orjson.dumps(
