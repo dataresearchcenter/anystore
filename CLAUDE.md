@@ -86,7 +86,7 @@ imports (e.g. `logic/io.py` type-hints `Store`).
 - **`util/`** — Utility functions (re-exports all public names from submodules and `logic/uri` via `__init__.py`)
   - `checksum.py` — `make_checksum`, `make_data_checksum`, `make_signature_key`, `make_uri_key`
   - `data.py` — `clean_dict`, `dict_merge`, `model_dump`, `pydantic_merge`, json/yaml dumpers
-  - `misc.py` — `rm_rf`, `mask_uri`, `ensure_uuid`, `get_extension`, `guess_mimetype`, `Took`
+  - `misc.py` — `rm_rf`, `mask_uri`, `ensure_uuid`, `get_extension`, `guess_mimetype`, `format_bytes`, `Took`
 - **`model/`** — Pydantic models
   - `base.py` — `BaseModel` plus json/yaml/remote mixins
   - `store.py` — `StoreModel` (store configuration)
@@ -106,6 +106,9 @@ imports (e.g. `logic/io.py` type-hints `Store`).
   - `read.py` — `smart_read`, `smart_stream`, `smart_stream_csv/json`, model variants, `open_virtual`
   - `write.py` — `smart_write`, `Writer`, `ModelWriter`, csv/json variants
   - `logging.py` — `logged_items` (tqdm/structlog progress wrapper)
+  - `progress.py` — `SyncProgressBar`/`ProgressTask`/`Throughput` (rich multi-task
+    progress display with byte throughput, plus `logging_through` which routes log
+    output through the same console so bars and log lines don't garble each other)
 - **`decorators.py`** — `@anycache`, `@async_anycache`, `@error_handler`, `@async_error_handler`
 - **`interface/`** — Higher-level abstractions: `Queue`/`Queues`, `Tags`, `Lock`, `RateLimit`, plus cached
   `get_tags` / `get_lock` / `get_queue` / `get_rate_limit` factories in `__init__.py`

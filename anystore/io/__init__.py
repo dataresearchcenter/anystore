@@ -1,5 +1,12 @@
 from anystore.io.handler import SmartHandler, smart_open
 from anystore.io.logging import logged_items
+from anystore.io.progress import (
+    ProgressTask,
+    SyncProgressBar,
+    Throughput,
+    ThroughputColumn,
+    logging_through,
+)
 from anystore.io.read import (
     open_virtual,
     smart_read,
@@ -32,10 +39,15 @@ __all__ = [
     "FORMAT_JSON",
     "IOFormat",
     "ModelWriter",
+    "ProgressTask",
     "SmartHandler",
+    "SyncProgressBar",
+    "Throughput",
+    "ThroughputColumn",
     "Writer",
     "_default_serializer",
     "logged_items",
+    "logging_through",
     "open_virtual",
     "smart_open",
     "smart_read",

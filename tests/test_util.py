@@ -18,7 +18,7 @@ from anystore.logic.uri import (
 )
 from anystore.util.checksum import make_checksum, make_data_checksum, make_uri_key
 from anystore.util.data import clean_dict, dict_merge, pydantic_merge
-from anystore.util.misc import Took, ensure_uuid, mask_uri
+from anystore.util.misc import Took, ensure_uuid, format_bytes, mask_uri
 
 
 def test_util_clean_dict():
@@ -180,6 +180,16 @@ def test_util_uuid():
     assert isinstance(ensure_uuid(), str)
     uid = str(uuid4())
     assert ensure_uuid(uid) == uid
+
+
+def test_util_format_bytes():
+    assert format_bytes(0) == "0.0B"
+    assert format_bytes(512) == "512.0B"
+    assert format_bytes(1024) == "1.0KB"
+    assert format_bytes(1024 * 1024) == "1.0MB"
+    assert format_bytes(1024**5) == "1.0PB"
+    assert format_bytes(1024**6) == "1.0EB"
+    assert format_bytes(1024 * 1024 * 2.5, "B/s") == "2.5MB/s"
 
 
 def test_util_took():

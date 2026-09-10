@@ -238,9 +238,34 @@ def test_writer_lazy(tmp_path):
     assert store.exists("rows.csv")
 
     # eager is the default: a header-only csv is a legitimate thing to want
-    with Writer(str(tmp_path / "header.csv"), output_format="csv"):
+    with Writer(
+        str(tmp_path / "header.csv"), output_format="csv", fieldnames=["a", "b"]
+    ):
         pass
     assert store.exists("header.csv")
+    assert store.get("header.csv", mode="r") == "a,b\r\n"
+
+    # without a declared header there is nothing to write until the first row
+    with Writer(str(tmp_path / "unknown.csv"), output_format="csv"):
+        pass
+    assert store.get("unknown.csv", mode="r") == ""
+
+    # ... and a declared header is written exactly once
+    with Writer(
+        str(tmp_path / "once.csv"), output_format="csv", fieldnames=["a", "b"]
+    ) as writer:
+        writer.write({"a": "1", "b": "2"})
+    assert store.get("once.csv", mode="r") == "a,b\r\n1,2\r\n"
+
+    # a lazy writer still writes its header with the first row
+    with Writer(
+        str(tmp_path / "lazy_header.csv"),
+        output_format="csv",
+        fieldnames=["a", "b"],
+        lazy=True,
+    ) as writer:
+        writer.write({"a": "1", "b": "2"})
+    assert store.get("lazy_header.csv", mode="r") == "a,b\r\n1,2\r\n"
 
 
 def test_writer_without_a_context_manager(tmp_path):

@@ -16,6 +16,7 @@ nav:
       - anystore.cli: reference/cli.md
     - I/O:
       - anystore.io: reference/io.md
+      - anystore.io.progress: reference/progress.md
       - anystore.decorators: reference/decorators.md
     - Store:
       - anystore.store: reference/store.md

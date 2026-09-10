@@ -65,6 +65,30 @@ def guess_mimetype(key: Uri) -> str:
     return normalize_mimetype(mtype)
 
 
+def format_bytes(size: float, suffix: str = "B") -> str:
+    """
+    Human readable binary size
+
+    Examples:
+        >>> format_bytes(1024)
+        "1.0KB"
+        >>> format_bytes(1024 * 1024 * 2.5, "B/s")
+        "2.5MB/s"
+
+    Args:
+        size: Number of bytes
+        suffix: Unit suffix to append, e.g. `"B/s"` for a transfer rate
+
+    Returns:
+        The formatted size
+    """
+    for unit in ("", "K", "M", "G", "T", "P"):
+        if abs(size) < 1024:
+            return f"{size:.1f}{unit}{suffix}"
+        size /= 1024
+    return f"{size:.1f}E{suffix}"
+
+
 def mask_uri(uri: Uri) -> str:
     """
     Replace username and password in a URI with asterisks

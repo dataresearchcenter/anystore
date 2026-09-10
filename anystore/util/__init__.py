@@ -29,6 +29,7 @@ from anystore.util.data import (
 from anystore.util.misc import (
     Took,
     ensure_uuid,
+    format_bytes,
     get_extension,
     guess_mimetype,
     mask_uri,
@@ -44,6 +45,7 @@ __all__ = [
     "dump_yaml_model",
     "ensure_uri",
     "ensure_uuid",
+    "format_bytes",
     "get_extension",
     "guess_mimetype",
     "is_empty",
