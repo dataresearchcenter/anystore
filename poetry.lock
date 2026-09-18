@@ -3916,15 +3916,15 @@ tests = ["pytest"]
 
 [[package]]
 name = "putfs"
-version = "0.4.3"
+version = "0.4.4"
 description = "Efficient HTTP blob storage over local filesystem"
 optional = true
 python-versions = "<3.15,>=3.11"
 groups = ["main"]
 markers = "extra == \"putfs\""
 files = [
-    {file = "putfs-0.4.3-py3-none-any.whl", hash = "sha256:afa0a0ef70c45c4a23f869d74c455340e37bf3028cbae0ec88c54ba36bba4ea0"},
-    {file = "putfs-0.4.3.tar.gz", hash = "sha256:03f28643f3e06ffd30105624692868f839a63e49ae9135560ea8285d53026c16"},
+    {file = "putfs-0.4.4-py3-none-any.whl", hash = "sha256:db925130449651c667c96aa29c3a75a8b7e5b0ca53b08681c61ef68f7b9db37a"},
+    {file = "putfs-0.4.4.tar.gz", hash = "sha256:9b4c91c5857736df292f05f180e171e65b630e6f0d2f422fe4aeb2b0221fbcc0"},
 ]
 
 [package.dependencies]
@@ -5937,4 +5937,4 @@ sql = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "498666884ba0a5070fd9a06337b12d8d1ce524c83de54f128bd17e83986e5de4"
+content-hash = "264990ca720b3664ed4ae67bef82e20957eeaccf384c5e9bf8b4b98837de43ec"
