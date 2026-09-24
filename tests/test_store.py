@@ -146,11 +146,12 @@ def _test_store(fixtures_path, uri: str) -> bool:
         time.sleep(1)
         assert store.get("expired", raise_on_nonexist=False) is None
     # global store ttl
-    store.default_ttl = 1
-    store.put("expired", 1)
-    assert store.get("expired") == 1
+    # (on a copy: `store` is the shared `get_store` cache instance)
+    ttl_store = store.model_copy(update={"default_ttl": 1})
+    ttl_store.put("expired", 1)
+    assert ttl_store.get("expired") == 1
     time.sleep(1)
-    assert store.get("expired", raise_on_nonexist=False) is None
+    assert ttl_store.get("expired", raise_on_nonexist=False) is None
 
     # checksum
     assert DEFAULT_HASH_ALGORITHM == "sha256"
@@ -208,7 +209,7 @@ def _test_store(fixtures_path, uri: str) -> bool:
     assert store.get("foo2%20bar") == "baz"
 
     # handling of none
-    store.store_none_values = False
+    store = store.model_copy(update={"store_none_values": False})
     store.put("nothing", None)
     assert not store.exists("nothing")
     store.put("nothing", 1)
