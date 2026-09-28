@@ -17,7 +17,7 @@ from typing import IO, Any, Callable, ContextManager, Generator
 from anystore.logic.compress import CompressKind
 from anystore.logic.io import _is_seekable
 from anystore.logic.serialize import Mode
-from anystore.logic.uri import CURRENT, UriHandler
+from anystore.logic.uri import CURRENT, UriHandler, split_uri
 from anystore.logic.virtual import VirtualIO
 from anystore.model import Stats
 from anystore.store.base import Store
@@ -41,7 +41,7 @@ class UriResource(UriHandler):
 
     def __init__(self, uri: Uri, **kwargs: Any) -> None:
         super().__init__(uri, **kwargs)
-        if self.parsed.path:
+        if "/" in split_uri(self.uri)[1]:
             base, key = self.uri.rsplit("/", 1)
             self.store = Store(uri=base, **kwargs)
             self.key = key

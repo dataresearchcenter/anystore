@@ -6,6 +6,7 @@ from s3fs.core import S3FileSystem
 
 from anystore.fs.redis import RedisFileSystem
 from anystore.fs.sql import SqlFileSystem
+from anystore.store import get_store
 from anystore.store.keys import Keys
 
 
@@ -94,3 +95,35 @@ def test_core_key_invalid():
         keys.to_fs_key("memory://foo")
     with pytest.raises(ValueError):
         keys.to_fs_key("foo/../bar")
+
+
+def test_core_key_literal_percent(tmp_path):
+    # keys are not unquoted
+    for uri in (tmp_path, "memory://foo", "s3://anystore/foo", "redis://localhost"):
+        keys = Keys(uri)
+        assert keys.to_fs_key("a%20b").endswith("a%20b")
+        assert keys.from_fs_key(keys.to_fs_key("a%20b")) == "a%20b"
+        assert keys.from_fs_key(keys.to_fs_key("a b")) == "a b"
+
+    # http listings are percent-encoded hrefs
+    keys = Keys("http://localhost:8000")
+    assert keys.from_fs_key("http://localhost:8000/sub%20dir/a.txt") == "sub dir/a.txt"
+
+
+def test_core_key_prefix_special_chars(tmp_path):
+    # a base path with "#" or "?" is not cut at that character
+    for name in ("a#b", "a?b", "a%20b"):
+        base = tmp_path / name
+        keys = Keys(base)
+        assert keys.key_prefix == str(base)
+        assert keys.to_fs_key("c") == f"{base}/c"
+        store = get_store(base)
+        store.put("c", 1)
+        assert (base / "c").is_file()
+        assert list(store.iterate_keys()) == ["c"]
+
+    # the same for other backends
+    assert Keys("s3://anystore/a#b?c").key_prefix == "anystore/a#b?c"
+    assert Keys("memory://a#b?c").key_prefix == "a#b?c"
+    assert Keys("redis://localhost/1/a#b?c").key_prefix == "a#b?c"
+    assert Keys("https://example.org/a%20b").key_prefix == "https://example.org/a%20b"

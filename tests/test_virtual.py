@@ -2,6 +2,7 @@ from pathlib import Path
 
 from anystore.io import open_virtual
 from anystore.logic.uri import uri_to_path
+from anystore.store import get_store
 from anystore.store.base import Store
 from anystore.store.virtual import get_virtual_store
 
@@ -38,3 +39,16 @@ def test_virtual(fixtures_path):
         assert fh.path.exists()
         assert str(fh.path).endswith("fixtures/lorem.txt")
     assert fh.path.exists()
+
+
+def test_virtual_literal_percent(tmp_path):
+    # wget mirrors keep `%20` in file names
+    for parent in (tmp_path, tmp_path / "a%20b"):
+        parent.mkdir(exist_ok=True)
+        path = parent / "a%20b%20c%20&%20d.pdf"
+        path.write_bytes(b"hello")
+        for uri in (path, str(path)):
+            with open_virtual(uri, algorithm="sha256") as fh:
+                assert fh.read() == b"hello"
+                assert fh.path == path
+        assert get_store(parent, serialization_mode="raw").get(path.name) == b"hello"

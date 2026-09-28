@@ -23,8 +23,12 @@ from anystore.util.checksum import DEFAULT_HASH_ALGORITHM
 from tests.conftest import setup_s3
 
 
-def _test_store(fixtures_path, uri: str) -> bool:
-    # generic store test
+def _test_store(fixtures_path, uri: str, literal_percent: bool = True) -> bool:
+    """Generic store test.
+
+    `literal_percent=False` for backends whose client sends `%XX` in a key to
+    the server as is (putfs), so `foo%20bar` and `foo bar` are the same key.
+    """
     store = get_store(uri=uri)
     assert isinstance(store, Store)
     key = "test"
@@ -200,13 +204,18 @@ def _test_store(fixtures_path, uri: str) -> bool:
             break
     assert tested
 
-    # ensure unquoted path
+    # keys are not unquoted: a literal `%XX` is part of the key
     store.put("foo bar", "baz")
     assert store.get("foo bar") == "baz"
-    assert store.get("foo%20bar") == "baz"
-    store.put("foo2%20bar", "baz")
-    assert store.get("foo2 bar") == "baz"
-    assert store.get("foo2%20bar") == "baz"
+    store.put("foo%20bar", 1)
+    assert store.get("foo%20bar") == 1
+    store.put("100%25", 2)
+    assert store.get("100%25") == 2
+    if literal_percent:
+        assert store.get("foo bar") == "baz"
+        assert not store.exists("100%")
+        keys = set(store.iterate_keys())
+        assert {"foo bar", "foo%20bar", "100%25"} <= keys
 
     # handling of none
     store = store.model_copy(update={"store_none_values": False})
@@ -275,11 +284,15 @@ def test_store_putfs(fixtures_path, putfs_server):
     store = get_store(uri)
     assert isinstance(store._fs, PutFSFileSystem)
     assert isinstance(store._fs, HTTPFileSystem)
-    assert _test_store(fixtures_path, uri)
+    assert _test_store(fixtures_path, uri, literal_percent=False)
 
 
 def test_store_fs(tmp_path, fixtures_path):
     assert _test_store(fixtures_path, tmp_path)
+    # keys map to file names as they are
+    assert (tmp_path / "foo bar").is_file()
+    assert (tmp_path / "foo%20bar").is_file()
+    assert (tmp_path / "100%25").is_file()
 
     # don't pickle "external" data
     store = Store(uri=fixtures_path)
@@ -294,8 +307,9 @@ def test_store_fs(tmp_path, fixtures_path):
 
     store = Store(uri=fixtures_path / "sub dir")
     assert len(list(store.iterate_keys())) == 1
+    # a literal `%20` is not a space
     store = Store(uri=fixtures_path / "sub%20dir")
-    assert len(list(store.iterate_keys())) == 1
+    assert len(list(store.iterate_keys())) == 0
 
 
 def test_store_initialize(tmp_path, fixtures_path):
@@ -340,10 +354,9 @@ def _test_store_external(fixtures_path, store: Store):
     lorem = smart_read(fixtures_path / "lorem.txt", mode="r")
     keys = [k for k in store.iterate_keys()]
     assert len(keys) == 6
+    assert "sub dir/lorem.txt" in keys
     keys = [k for k in store.iterate_keys(prefix="sub dir")]
-    assert len(keys) == 1
-    keys = [k for k in store.iterate_keys(prefix="sub%20dir")]
-    assert len(keys) == 1
+    assert keys == ["sub dir/lorem.txt"]
     assert store.get("lorem.txt") == lorem
     assert store.get("sub dir/lorem.txt") == lorem
     assert store.info("sub dir/lorem.txt").mimetype == PLAIN

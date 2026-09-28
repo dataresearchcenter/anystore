@@ -1,6 +1,7 @@
 """Core handler for store absolute/relative key conversion"""
 
 from functools import cached_property
+from urllib.parse import unquote
 
 import fsspec
 
@@ -13,41 +14,41 @@ except ImportError:
     CAN_HTTP = False
 
 from anystore.logic.constants import SCHEME_FILE, SCHEME_MEMORY, SCHEME_REDIS
-from anystore.logic.uri import UriHandler, validate_relative_uri, validate_uri
+from anystore.logic.uri import (
+    UriHandler,
+    split_uri,
+    validate_relative_uri,
+    validate_uri,
+)
 from anystore.types import Uri
 
 
 class Keys:
     def __init__(self, uri: Uri) -> None:
         self.uri = UriHandler(uri)
-        self.fs, self._base_path = fsspec.url_to_fs(uri)
+        self.fs = fsspec.url_to_fs(uri)[0]
 
     def __repr__(self) -> str:
         return f"<Keys({self.uri})>"
 
     @cached_property
     def key_prefix(self) -> str:
-        if self.uri.scheme == SCHEME_FILE:
-            return self.uri.parsed.path.rstrip("/")
-        path = self.uri.parsed.path.strip("/")
-        if self.uri.scheme == SCHEME_MEMORY:
-            return self._base_path.strip("/")
-        if self.uri.scheme == SCHEME_REDIS:
-            # a numeric first path segment is the redis db selector
-            # (see RedisFileSystem._get_kwargs_from_urls), not part of the keys
-            parts = path.split("/", 1)
-            if parts[0].isdigit():
-                return parts[1] if len(parts) > 1 else ""
-            return path
-        if "sql" in self.uri.scheme:
+        scheme, rest = split_uri(self.uri.uri)
+        if scheme == SCHEME_FILE:
+            return rest.rstrip("/")
+        if scheme == SCHEME_REDIS:
+            # drop the host; a numeric first path segment is the redis db
+            # selector (see RedisFileSystem._get_kwargs_from_urls)
+            parts = rest.strip("/").split("/")[1:]
+            if parts and parts[0].isdigit():
+                parts = parts[1:]
+            return "/".join(parts)
+        if "sql" in scheme:
             return ""
         if CAN_HTTP and isinstance(self.fs, HTTPFileSystem):
             return str(self.uri)
-        # other fsspec implementations want relative path with netloc
-        base = self.uri.parsed.netloc
-        if path:
-            return f"{base}/{path}"
-        return base
+        # memory, s3 and other fsspec implementations want the relative path
+        return rest.strip("/")
 
     def to_fs_key(self, key: Uri) -> str:
         """Convert a relative key to the backend fs key"""
@@ -64,9 +65,15 @@ class Keys:
         # MemoryFileSystem.find() may return keys with a leading slash
         if self.uri.scheme == SCHEME_MEMORY:
             key = key.lstrip("/")
-        if key.startswith(self.key_prefix):
-            return key[len(self.key_prefix) :].strip("/")
-        raise ValueError(f"Invalid key `{key}`, doesn't has base `{self.key_prefix}`")
+        if not key.startswith(self.key_prefix):
+            raise ValueError(
+                f"Invalid key `{key}`, doesn't has base `{self.key_prefix}`"
+            )
+        key = key[len(self.key_prefix) :].strip("/")
+        # http directory listings are percent-encoded hrefs
+        if self.uri.scheme in ("http", "https"):
+            key = unquote(key)
+        return key
 
     def to_absolute_uri(self, key: Uri) -> str:
         return str(self.uri / key)

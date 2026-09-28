@@ -14,7 +14,10 @@ from anystore.logic.uri import (
     join_uri,
     name_from_uri,
     path_from_uri,
+    split_uri,
     uri_to_path,
+    validate_relative_uri,
+    validate_uri,
 )
 from anystore.util.checksum import make_checksum, make_data_checksum, make_uri_key
 from anystore.util.data import clean_dict, dict_merge, pydantic_merge
@@ -166,6 +169,51 @@ def test_util_pydantic_merge():
 def test_util_uri_to_path():
     path = Path("/tmp/foo")
     assert uri_to_path("/tmp/foo") == path
+    assert uri_to_path("/tmp/a%20b") == Path("/tmp/a%20b")
+    assert uri_to_path(Path("/tmp/a%20b")) == Path("/tmp/a%20b")
+    assert uri_to_path("file:///tmp/a%20b") == Path("/tmp/a%20b")
+
+
+@pytest.mark.parametrize("name", ["a%20b", "a%2520b", "a b", "a&b", "a#b", "a?b"])
+def test_util_uri_literal_percent(name):
+    # local paths keep their names as they are, applying `ensure_uri` twice
+    # gives the same result
+    path = Path("/data") / name
+    for p in (path, str(path)):
+        uri = ensure_uri(p)
+        assert uri == f"file:///data/{name}"
+        assert ensure_uri(uri) == uri
+        assert uri_to_path(uri) == path
+        assert name_from_uri(uri) == name
+
+
+def test_util_uri_unquote():
+    # uris are never unquoted
+    assert ensure_uri("s3://b/a%20b") == "s3://b/a%20b"
+    assert ensure_uri("memory://a%20b") == "memory://a%20b"
+    assert ensure_uri("https://x/a%20b") == "https://x/a%20b"
+    assert ensure_uri("https://x/a b") == "https://x/a b"
+
+    assert validate_uri("a%20b") == "a%20b"
+    assert validate_relative_uri("a%20b/c%25/") == "a%20b/c%25"
+    # only "scheme://" makes a key absolute
+    assert validate_relative_uri("note:1") == "note:1"
+    with pytest.raises(ValueError):
+        validate_relative_uri("s3://b/a")
+    # a colon without "://" is a local path
+    assert ensure_uri("foo:bar").startswith("file:///")
+    assert ensure_uri("foo:bar").endswith("/foo:bar")
+    # path traversal, also when encoded
+    for uri in ("../x", "..%2Fx", "a/..%2fx", "%2E%2E%2Fx"):
+        with pytest.raises(ValueError):
+            validate_uri(uri)
+
+
+def test_util_split_uri():
+    assert split_uri("s3://bucket/a%20b#c?d") == ("s3", "bucket/a%20b#c?d")
+    assert split_uri("file:///tmp/a#b") == ("file", "/tmp/a#b")
+    assert split_uri("memory://") == ("memory", "")
+    assert split_uri("/tmp/foo") == ("", "/tmp/foo")
 
 
 def test_util_make_uri_key():

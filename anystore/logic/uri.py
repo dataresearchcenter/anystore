@@ -14,9 +14,30 @@ CURRENT = "."
 settings = Settings()
 
 
-def ensure_uri(uri: Any, http_unquote: bool | None = True) -> str:
+def split_uri(uri: str) -> tuple[str, str]:
+    """
+    Split an uri into its scheme and the rest, which is used as is (never
+    percent-decoded, and not cut at "#" or "?").
+
+    Examples:
+        >>> split_uri("s3://bucket/a%20b#c")
+        ("s3", "bucket/a%20b#c")
+        >>> split_uri("/tmp/foo")
+        ("", "/tmp/foo")
+    """
+    scheme, sep, rest = uri.partition("://")
+    if not sep:
+        return "", uri
+    return scheme, rest
+
+
+def ensure_uri(uri: Any) -> str:
     """
     Normalize arbitrary uri-like input to an absolute uri with scheme.
+
+    Like fsspec, anystore never percent-encodes or -decodes: local paths and
+    `pathlib.Path` objects become `file://` + the absolute path as is, uris
+    with a scheme are returned as given.
 
     Example:
         ```python
@@ -31,7 +52,6 @@ def ensure_uri(uri: Any, http_unquote: bool | None = True) -> str:
 
     Args:
         uri: uri-like string
-        http_unquote: Return unquoted uri, manually disable for some http edge cases
 
     Returns:
         Absolute uri with scheme
@@ -46,16 +66,11 @@ def ensure_uri(uri: Any, http_unquote: bool | None = True) -> str:
     if uri == "-":  # stdin/stout
         return uri
     if isinstance(uri, Path):
-        return unquote(uri.absolute().as_uri())
+        return f"{SCHEME_FILE}://{uri.absolute()}"
     uri = validate_uri(uri)
-    parsed = urlparse(uri)
-    if parsed.scheme:
-        if not parsed.netloc and not parsed.path:
-            return f"{parsed.scheme}://"
-        if parsed.scheme.startswith("http") and not http_unquote:
-            return uri
-        return unquote(uri)
-    return unquote(Path(uri).absolute().as_uri())
+    if "://" in uri:
+        return uri
+    return f"{SCHEME_FILE}://{Path(uri).absolute()}"
 
 
 class UriHandler:
@@ -162,11 +177,9 @@ def join_uri(uri: Uri, path: Uri) -> str:
     if not path:
         return uri
     validate_uri(path)
-    parsed = urlparse(uri)
-    scheme_prefix = f"{parsed.scheme}://"
-    rest = uri[len(scheme_prefix) :]
+    scheme, rest = split_uri(uri)
     sep = "/" if rest else ""
-    return f"{scheme_prefix}{rest.rstrip('/')}{sep}{path}"
+    return f"{scheme}://{rest.rstrip('/')}{sep}{path}"
 
 
 def path_from_uri(uri: Uri) -> Path:
@@ -187,9 +200,8 @@ def path_from_uri(uri: Uri) -> Path:
     Returns:
         Path object for given uri
     """
-    uri = ensure_uri(uri)
-    path = "/" + uri[len(urlparse(uri).scheme) + 3 :].lstrip("/")
-    return Path(path)
+    _, rest = split_uri(ensure_uri(uri))
+    return Path("/" + rest.lstrip("/"))
 
 
 def name_from_uri(uri: Uri) -> str:
@@ -229,19 +241,18 @@ def join_relpaths(*parts: Uri) -> str:
 
 
 def uri_to_path(uri: Uri) -> Path:
-    uri = ensure_uri(uri)
-    parsed = urlparse(uri)
-    rest = uri[len(parsed.scheme) + 3 :]
+    _, rest = split_uri(ensure_uri(uri))
     return Path(rest) if rest else Path("/")
 
 
 def validate_uri(uri: Uri | None = None) -> str:
     if not uri:
         raise ValueError(f"Invalid empty uri: `{uri}`")
-    uri = unquote(str(uri).strip())
+    uri = str(uri).strip()
     if not uri:
         raise ValueError(f"Invalid empty uri: `{uri}`")
-    if "../" in uri and not settings.unsafe_uris:
+    # check the decoded form, too: http-like backends unquote on the server
+    if ("../" in uri or "../" in unquote(uri)) and not settings.unsafe_uris:
         raise ValueError(f"Path traversal forbidden: `{uri}`")
     return uri
 
@@ -249,10 +260,7 @@ def validate_uri(uri: Uri | None = None) -> str:
 def validate_relative_uri(uri: Uri | None = None) -> str:
     """Empty uris, absolute uris are not allowed here"""
     uri = validate_uri(uri)
-    if uri.startswith("/"):
+    if uri.startswith("/") or "://" in uri:
         raise ValueError(f"Invalid absolute key: `{uri}`")
-    uri_ = urlparse(uri)
-    if uri_.scheme:
-        raise ValueError(f"Invalid absolute key: `{uri_}`")
-    uri = unquote(uri).rstrip("/")
+    uri = uri.rstrip("/")
     return "/".join(p for p in uri.split("/") if p != CURRENT)
