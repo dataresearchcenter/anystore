@@ -248,8 +248,9 @@ def uri_to_path(uri: Uri) -> Path:
 def validate_uri(uri: Uri | None = None) -> str:
     if not uri:
         raise ValueError(f"Invalid empty uri: `{uri}`")
-    uri = str(uri).strip()
-    if not uri:
+    # never strip: leading/trailing whitespace is valid in path segments
+    uri = str(uri)
+    if not uri.strip():
         raise ValueError(f"Invalid empty uri: `{uri}`")
     # check the decoded form, too: http-like backends unquote on the server
     if ("../" in uri or "../" in unquote(uri)) and not settings.unsafe_uris:

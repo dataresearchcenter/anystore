@@ -311,6 +311,25 @@ def test_store_fs(tmp_path, fixtures_path):
     store = Store(uri=fixtures_path / "sub%20dir")
     assert len(list(store.iterate_keys())) == 0
 
+    # leading/trailing whitespace in path segments is kept
+    (tmp_path / "ws").mkdir()
+    (tmp_path / "ws/b").write_text("no space")
+    (tmp_path / "ws/b ").mkdir()
+    (tmp_path / "ws/b /c").write_text("space")
+    assert smart_read(f"{tmp_path}/ws/b /c", mode="r") == "space"
+    store = get_store(f"{tmp_path}/ws/b ")
+    assert list(store.iterate_keys()) == ["c"]
+    store = get_store(tmp_path / "ws")
+    assert store.get("b", mode="r") == "no space"
+    assert list(store.iterate_keys(prefix="b ")) == ["b /c"]
+    store.put("d ", 1)
+    store.put(" e", 2)
+    assert (tmp_path / "ws/d ").is_file()
+    assert (tmp_path / "ws/ e").is_file()
+    assert not (tmp_path / "ws/d").exists()
+    assert store.get("d ") == 1
+    assert store.get(" e") == 2
+
 
 def test_store_initialize(tmp_path, fixtures_path):
     # initialize (take env vars into account)

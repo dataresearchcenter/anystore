@@ -195,6 +195,13 @@ def test_util_uri_unquote():
     assert ensure_uri("https://x/a b") == "https://x/a b"
 
     assert validate_uri("a%20b") == "a%20b"
+    # whitespace is never stripped
+    assert validate_uri(" a/b /c ") == " a/b /c "
+    assert validate_relative_uri("a/b ") == "a/b "
+    assert ensure_uri("/a/b ") == "file:///a/b "
+    for uri in ("", " ", "\n"):
+        with pytest.raises(ValueError):
+            validate_uri(uri)
     assert validate_relative_uri("a%20b/c%25/") == "a%20b/c%25"
     # only "scheme://" makes a key absolute
     assert validate_relative_uri("note:1") == "note:1"
