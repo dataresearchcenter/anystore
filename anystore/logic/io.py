@@ -30,6 +30,16 @@ def stream(reader: IO, writer: IO, chunk_size: int = CHUNK_SIZE) -> int:
     return size
 
 
+def stream_iter(
+    reader: IO, writer: IO, chunk_size: int = CHUNK_SIZE
+) -> Generator[int, None, None]:
+    """Copy data from *reader* to *writer* in chunks. Iter byte size after each
+    completed chunk."""
+    while chunk := reader.read(chunk_size):
+        writer.write(chunk)
+        yield len(chunk)
+
+
 def stream_bytes(key: str, source: "Store", target: "Store", **kwargs: Any) -> int:
     """Stream binary content for *key* from *source* to *target* store. Returns
     streamed bytes count"""
