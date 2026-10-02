@@ -230,6 +230,15 @@ def _test_store(fixtures_path, uri: str, literal_percent: bool = True) -> bool:
     assert store.get("special/current/") == "test"
     assert store.get("special/current/.") == "test"
 
+    # handling of PARENT (".."): only a whole segment is a traversal
+    store.put("special/parent/c.../d.txt", "test")
+    assert store.get("special/parent/c.../d.txt") == "test"
+    keys = set(store.iterate_keys(prefix="special/parent/c..."))
+    assert keys == {"special/parent/c.../d.txt"}
+    for key in ("..", "special/..", "special/../x"):
+        with pytest.raises(ValueError):
+            store.put(key, "test")
+
     return True
 
 

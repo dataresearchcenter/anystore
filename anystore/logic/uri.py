@@ -11,6 +11,7 @@ from anystore.settings import Settings
 from anystore.types import Uri
 
 CURRENT = "."
+PARENT = ".."
 settings = Settings()
 
 
@@ -152,8 +153,7 @@ def join_uri(uri: Uri, path: Uri) -> str:
         assert util.join_uri("/tmp", "foo") == "file:///tmp/foo"
         assert util.join_uri(Path("./foo"), "bar").startswith("file:///")
         assert util.join_uri(Path("./foo"), Path("bar")).endswith("foo/bar")
-        assert util.join_uri("s3://foo/bar.pdf", "../baz.txt") == "s3://foo/baz.txt"
-        assert util.join_uri("redis://foo/bar.pdf", "../baz.txt") == "redis://foo/baz.txt"
+        assert util.join_uri("s3://foo/bar", "./baz.txt") == "s3://foo/bar/baz.txt"
         ```
 
     Args:
@@ -164,7 +164,7 @@ def join_uri(uri: Uri, path: Uri) -> str:
         Absolute joined uri
 
     Raises:
-        ValueError: For invalid uri (e.g. stdin: "-")
+        ValueError: For invalid uri (e.g. stdin: "-") or a ".." path segment
     """
     uri = ensure_uri(uri)
     if not uri or uri == "-":
@@ -245,6 +245,11 @@ def uri_to_path(uri: Uri) -> Path:
     return Path(rest) if rest else Path("/")
 
 
+def _has_parent_ref(uri: str) -> bool:
+    # whole segments only: "c.../d" is a valid key, "a/.." is a traversal
+    return PARENT in uri.split("/")
+
+
 def validate_uri(uri: Uri | None = None) -> str:
     if not uri:
         raise ValueError(f"Invalid empty uri: `{uri}`")
@@ -253,7 +258,9 @@ def validate_uri(uri: Uri | None = None) -> str:
     if not uri.strip():
         raise ValueError(f"Invalid empty uri: `{uri}`")
     # check the decoded form, too: http-like backends unquote on the server
-    if ("../" in uri or "../" in unquote(uri)) and not settings.unsafe_uris:
+    if (
+        _has_parent_ref(uri) or _has_parent_ref(unquote(uri))
+    ) and not settings.unsafe_uris:
         raise ValueError(f"Path traversal forbidden: `{uri}`")
     return uri
 

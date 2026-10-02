@@ -216,6 +216,39 @@ def test_util_uri_unquote():
             validate_uri(uri)
 
 
+def test_util_uri_parent_segment(monkeypatch):
+    # only a whole ".." segment is a traversal, dots within a segment are not
+    for uri in ("c.../d.txt", "a/b/c.../d.txt", ".../x", "..x/y", "x../y", "a..b"):
+        assert validate_uri(uri) == uri
+        assert validate_relative_uri(uri) == uri
+        assert join_uri("s3://b", uri) == f"s3://b/{uri}"
+    for uri in (
+        "..",
+        "../a",
+        "a/..",
+        "a/../b",
+        "%2E%2E",
+        ".%2E",
+        "..%2F",
+        "a%2F..%2Fb",
+    ):
+        with pytest.raises(ValueError):
+            validate_uri(uri)
+        with pytest.raises(ValueError):
+            validate_relative_uri(uri)
+        with pytest.raises(ValueError):
+            join_uri("s3://b", uri)
+    # store roots, too
+    for uri in ("..", "a/..", "s3://b/..", "https://x/a/../b"):
+        with pytest.raises(ValueError):
+            ensure_uri(uri)
+
+    # explicit opt-out
+    monkeypatch.setattr("anystore.logic.uri.settings.unsafe_uris", True)
+    for uri in ("..", "a/../b", "%2E%2E"):
+        assert validate_uri(uri) == uri
+
+
 def test_util_split_uri():
     assert split_uri("s3://bucket/a%20b#c?d") == ("s3", "bucket/a%20b#c?d")
     assert split_uri("file:///tmp/a#b") == ("file", "/tmp/a#b")
