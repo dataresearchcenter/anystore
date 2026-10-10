@@ -1,5 +1,5 @@
 from datetime import datetime
-from io import BytesIO
+from io import BytesIO, StringIO
 from pathlib import Path
 
 import pytest
@@ -29,6 +29,7 @@ from anystore.io import (
     smart_write_models,
     stream_bytes,
 )
+from anystore.logic.io import iter_lines
 from anystore.store import get_store
 from tests.conftest import setup_s3
 
@@ -305,3 +306,45 @@ def test_io_stream_bytes(tmp_path):
     size = stream_bytes("file.txt", source, target)
     assert target.get("file.txt") == "content"
     assert size == 7
+
+
+class _UnseekableBytes(BytesIO):
+    def seek(self, *args):
+        raise OSError("unseekable")
+
+
+class _UnseekableText(StringIO):
+    def seek(self, *args):
+        raise OSError("unseekable")
+
+
+def test_io_iter_lines_lazy():
+    data = b"line\n" * 100_000
+    fh = BytesIO(data)
+    lines = iter_lines(fh)
+    assert next(lines) == b"line\n"
+    # the rest of the file is still unread
+    assert fh.tell() == len(b"line\n")
+    assert list(iter_lines(BytesIO(data))) == BytesIO(data).readlines()
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        b"",
+        b"a",
+        b"a\n",
+        b"a\n\nbb\n" + b"c" * 50 + b"\nd",
+        "\u00e4\n\u00f6\u00fc\n" + "x" * 10,
+    ],
+)
+def test_io_iter_lines_unseekable(data):
+    if isinstance(data, bytes):
+        fh, sep = _UnseekableBytes(data), b"\n"
+    else:
+        fh, sep = _UnseekableText(data), "\n"
+    expected = data.split(sep)
+    if not expected[-1]:
+        expected.pop()
+    # lines spanning several chunks
+    assert list(iter_lines(fh, chunk_size=3)) == expected
