@@ -67,22 +67,27 @@ def _iter_lines_chunked(
     fh: IO, chunk_size: int = CHUNK_SIZE
 ) -> Generator[AnyStr, None, None]:
     """Line iterator using chunk-based reading for non-seekable streams."""
-    probe = fh.read(0)
-    sep = b"\n" if isinstance(probe, bytes) else "\n"
-    buf = b"" if isinstance(probe, bytes) else ""
+    empty = fh.read(0)
+    sep = b"\n" if isinstance(empty, bytes) else "\n"
+    # pieces of a line spanning chunks, joined once it is complete: re-slicing a
+    # growing buffer per line or per chunk is quadratic
+    pending: list[Any] = []
     while chunk := fh.read(chunk_size):
-        buf += chunk
-        while sep in buf:
-            line, buf = buf.split(sep, 1)
-            yield line
-    if buf:
-        yield buf
+        first, *lines = chunk.split(sep)
+        pending.append(first)
+        if lines:
+            yield empty.join(pending)
+            pending = [lines.pop()]
+            yield from lines
+    if tail := empty.join(pending):
+        yield tail
 
 
 def iter_lines(fh: IO, chunk_size: int = CHUNK_SIZE) -> Generator[AnyStr, None, None]:
-    """Iterate lines from a file handle, falling back to chunk-based reading for
-    non-seekable streams (e.g. HTTP streaming files in fsspec)."""
+    """Lazily iterate lines from a file handle, falling back to chunk-based
+    reading for non-seekable streams (e.g. HTTP streaming files in fsspec)."""
     if _is_seekable(fh):
-        yield from fh.readlines()
+        # not `readlines()`, which reads the whole file before the first line
+        yield from iter(fh.readline, fh.read(0))
     else:
         yield from _iter_lines_chunked(fh, chunk_size)
