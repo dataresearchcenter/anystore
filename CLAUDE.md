@@ -48,6 +48,23 @@ make build
 make documentation
 ```
 
+## Behaviour rules for code agents
+
+1. Don’t assume. Don’t hide confusion. Surface tradeoffs.
+2. Minimum code that solves the problem. Nothing speculative.
+3. Touch only what you must. Clean up only your own mess.
+4. Define success criteria. Loop until verified.
+
+
+## Conventions
+
+- Keep docstrings and docs short, only the essentials; the audience is developers. No reasoning essays. Inline comments only where the code would surprise otherwise. Docstrings carry Args / Returns only for public API documented in `docs/` (rendered via mkdocstrings, see `docs/reference/`); keep their `Example(s):` sections.
+- No section banners (`# --- ... ---`, `// --- ... ---`) in code or tests: a comment explains surprising code, it doesn't divide a file.
+- Never use em-dashes (`—`) in prose (docstrings, comments, docs, commit messages, PR text). Use a normal hyphen (`-`) or restructure the sentence.
+- In `docs/` markdown prose, keep each paragraph on a single line (do not hard-wrap; one line per paragraph, separated by blank lines). Code docstrings and comments wrap normally.
+- Import at module top level. Use a function-local (inline) import only to break a genuine circular dependency; a type-only import belongs under `if TYPE_CHECKING:` instead.
+
+
 ## Architecture
 
 **anystore** is a unified key-value storage interface supporting multiple backends (local filesystem, S3, Redis, SQL, HTTP, memory) via fsspec.
