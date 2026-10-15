@@ -129,6 +129,11 @@ def _clear_memory_fs():
     MemoryFileSystem.store.clear()
 
 
-def setup_s3():
-    s3 = boto3.resource("s3", region_name="us-east-1")
-    s3.create_bucket(Bucket="anystore")
+@pytest.fixture
+def s3_bucket(moto_server):
+    # same endpoint as s3fs; the yielded 0.0.0.0 url bypasses NO_PROXY
+    endpoint = os.environ["FSSPEC_S3_ENDPOINT_URL"]
+    s3 = boto3.resource("s3", region_name="us-east-1", endpoint_url=endpoint)
+    bucket = s3.create_bucket(Bucket="anystore")
+    yield bucket
+    bucket.objects.all().delete()  # the server keeps its state across tests

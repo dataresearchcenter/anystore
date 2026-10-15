@@ -1,18 +1,16 @@
 import orjson
-from moto import mock_aws
+import pytest
 from typer.testing import CliRunner
 
 from anystore import __version__
 from anystore.cli import cli
 from anystore.io import smart_write
-from tests.conftest import setup_s3
 
 runner = CliRunner()
 
 
-@mock_aws
+@pytest.mark.usefixtures("s3_bucket")
 def test_cli(tmp_path, fixtures_path):
-    setup_s3()
     res = runner.invoke(cli, "--help")
     assert res.exit_code == 0
 

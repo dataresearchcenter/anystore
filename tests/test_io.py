@@ -3,7 +3,6 @@ from io import BytesIO, StringIO
 from pathlib import Path
 
 import pytest
-from moto import mock_aws
 from pydantic import BaseModel
 
 from anystore.io import (
@@ -31,7 +30,6 @@ from anystore.io import (
 )
 from anystore.logic.io import iter_lines
 from anystore.store import get_store
-from tests.conftest import setup_s3
 
 
 def test_io_read(fixtures_path: Path):
@@ -83,9 +81,8 @@ def test_io_smart_open(tmp_path: Path, fixtures_path: Path):
     assert smart_read(tmp_path / "foo.txt", "r") == "bar"
 
 
-@mock_aws
+@pytest.mark.usefixtures("s3_bucket")
 def test_io_generic():
-    setup_s3()
     uri = "s3://anystore/foo"
     content = b"bar"
     smart_write(uri, content)
@@ -103,13 +100,12 @@ def test_io_generic():
     assert tested
 
 
-@mock_aws
+@pytest.mark.usefixtures("s3_bucket")
 def test_io_smart_handler(fixtures_path: Path):
     with SmartHandler(fixtures_path / "lorem.txt") as h:
         line = h.readline()
         assert line.decode().startswith("Lorem")
 
-    setup_s3()
     uri = "s3://anystore/content"
     content = b"foo"
     with SmartHandler(uri, mode="wb") as h:

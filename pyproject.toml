@@ -71,7 +71,7 @@ pre-commit = "^4.6.2"
 flake8 = ">=6.1,<8.0"
 ipdb = "^0.13.13"
 bump2version = "^1.0.1"
-moto = {extras = ["server"], version = "^5.2.2"}
+moto = {extras = ["server"], version = "^5.2.4"}
 pytest-asyncio = ">=1.4.0,<1.5.0"
 mkdocstrings-python = "^2.0.7"
 griffe-pydantic = "^1.1.6"
@@ -88,5 +88,7 @@ REDIS_DEBUG = 1
 DEBUG = 1
 ANYSTORE_YAML_URI = "./tests/fixtures/store.yml"
 FSSPEC_S3_ENDPOINT_URL = "http://localhost:8888"
+AWS_ACCESS_KEY_ID = "testing"
+AWS_SECRET_ACCESS_KEY = "testing"
 # putfs.client.fs binds its ClientSettings at import time
 PUTFS_HTTPS = 0
