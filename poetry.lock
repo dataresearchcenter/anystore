@@ -4385,19 +4385,19 @@ testing = ["process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "pytest-env"
-version = "1.7.1"
+version = "1.8.0"
 description = "pytest plugin that allows you to add environment variables."
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.11"
 groups = ["dev"]
 files = [
-    {file = "pytest_env-1.7.1-py3-none-any.whl", hash = "sha256:22341b945305b65ef4e53d7c678982cfd64b5c5800afdf7d37caad2362ea002c"},
-    {file = "pytest_env-1.7.1.tar.gz", hash = "sha256:f2c5aed2621dbfc73c2866a710e2e456409495c5ac10905612c9509b3ee631a2"},
+    {file = "pytest_env-1.8.0-py3-none-any.whl", hash = "sha256:43a026236949342be217f1539fa7ef32973f0d3a98d79d86a15eee973d3b1a2a"},
+    {file = "pytest_env-1.8.0.tar.gz", hash = "sha256:e2dd383be15823a875403509949c0d975266f4f1711ccfbdcdbcbcf8fa83097c"},
 ]
 
 [package.dependencies]
-pytest = ">=9.0.2"
-python-dotenv = ">=1.2.2"
+pytest = ">=9.1.1"
+python-dotenv = ">=1.2.4"
 
 [[package]]
 name = "python-dateutil"
@@ -6128,4 +6128,4 @@ sql = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "8908494e0612a06177cfe9f57dff8bb6a81bcbe7be184bb55e81a796803813f8"
+content-hash = "102bcbfb91563228450dac61838b6dd1337362a2c6ed94dc97c8e49fd01657e6"
