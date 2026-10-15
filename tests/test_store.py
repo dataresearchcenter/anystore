@@ -6,7 +6,6 @@ import pytest
 from fsspec.implementations.http import HTTPFileSystem
 from fsspec.implementations.local import LocalFileSystem
 from fsspec.implementations.memory import MemoryFileSystem
-from moto import mock_aws
 from putfs.client.fs import PutFSFileSystem
 from rigour.mime import PLAIN
 from s3fs.core import S3FileSystem
@@ -20,7 +19,6 @@ from anystore.logic.uri import join_uri
 from anystore.model import StoreModel
 from anystore.store import Store, get_store
 from anystore.util.checksum import DEFAULT_HASH_ALGORITHM
-from tests.conftest import setup_s3
 
 
 def _test_store(fixtures_path, uri: str, literal_percent: bool = True) -> bool:
@@ -242,9 +240,8 @@ def _test_store(fixtures_path, uri: str, literal_percent: bool = True) -> bool:
     return True
 
 
-@mock_aws
+@pytest.mark.usefixtures("s3_bucket")
 def test_store_s3(fixtures_path):
-    setup_s3()
     assert _test_store(fixtures_path, "s3://anystore")
 
 
@@ -392,12 +389,11 @@ def _test_store_external(fixtures_path, store: Store):
     return True
 
 
-@mock_aws
+@pytest.mark.usefixtures("s3_bucket")
 def test_store_external(fixtures_path):
     assert _test_store_external(fixtures_path, get_store(fixtures_path))
     assert _test_store_external(fixtures_path, get_store("http://localhost:8000"))
 
-    setup_s3()
     store = get_store(fixtures_path, serialization_mode="raw")
     target = get_store("s3://anystore", serialization_mode="raw")
     for key in store.iterate_keys():

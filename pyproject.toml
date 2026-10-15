@@ -88,5 +88,7 @@ REDIS_DEBUG = 1
 DEBUG = 1
 ANYSTORE_YAML_URI = "./tests/fixtures/store.yml"
 FSSPEC_S3_ENDPOINT_URL = "http://localhost:8888"
+AWS_ACCESS_KEY_ID = "testing"
+AWS_SECRET_ACCESS_KEY = "testing"
 # putfs.client.fs binds its ClientSettings at import time
 PUTFS_HTTPS = 0
