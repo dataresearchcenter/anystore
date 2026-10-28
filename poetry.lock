@@ -3971,25 +3971,25 @@ tests = ["pytest"]
 
 [[package]]
 name = "putfs"
-version = "0.6.1"
+version = "0.6.2"
 description = "Efficient HTTP blob storage over local filesystem"
 optional = true
 python-versions = "<3.15,>=3.11"
 groups = ["main"]
 markers = "extra == \"putfs\""
 files = [
-    {file = "putfs-0.6.1-py3-none-any.whl", hash = "sha256:9180b712b51e34c4a001b7952e4e6b299fc46ffdb47356df30d1858fb20b5296"},
-    {file = "putfs-0.6.1.tar.gz", hash = "sha256:7eadbb6e448db555983d047efe73d015acaea51e1986f2aaa352678748f79ed7"},
+    {file = "putfs-0.6.2-py3-none-any.whl", hash = "sha256:fc3d3faa16f0a6bf8b1e6a603101b8aabcf565afedd105275eea9bbcc861df46"},
+    {file = "putfs-0.6.2.tar.gz", hash = "sha256:fc9ae63d4da91d212a06cb33e6dcc82674eb6af3f4e5683a3ff8dae53895d331"},
 ]
 
 [package.dependencies]
 anyio = ">=4.15.1,<5.0.0"
 granian = ">=2.8.4,<3.0.0"
-starlette = ">=1.7.0,<2.0.0"
+starlette = ">=1.9.0,<2.0.0"
 uvloop = ">=0.22.1,<0.23.0"
 
 [package.extras]
-client = ["anystore[http] (>=1.5.1,<2.0.0)", "tqdm (>=4.70.0,<5.0.0)"]
+client = ["anystore[http] (>=1.5.4,<2.0.0)", "tqdm (>=4.70.0,<5.0.0)"]
 
 [[package]]
 name = "py-partiql-parser"
@@ -5315,15 +5315,15 @@ tests = ["cython", "littleutils", "pygments", "pytest", "typeguard"]
 
 [[package]]
 name = "starlette"
-version = "1.8.0"
+version = "1.10.0"
 description = "The little ASGI library that shines."
 optional = true
 python-versions = ">=3.11"
 groups = ["main"]
 markers = "extra == \"putfs\""
 files = [
-    {file = "starlette-1.8.0-py3-none-any.whl", hash = "sha256:dfdd6b29c26483288088d990eee59631dedadd66ce20d203402a7ca8e3c4656f"},
-    {file = "starlette-1.8.0.tar.gz", hash = "sha256:1565dc0b35d5737a271ed1e0e04e949f4e81198799f216d2667b0a0fb9cf9522"},
+    {file = "starlette-1.10.0-py3-none-any.whl", hash = "sha256:478c0ab3b4ced6e82719849c118fa406f0278a3499c1a898cd15cd31bdc38ce4"},
+    {file = "starlette-1.10.0.tar.gz", hash = "sha256:b8399098d4c1e3522734f7235dc79b1fc967f96cf139c81e0fa30479e0685f9b"},
 ]
 
 [package.dependencies]
@@ -6073,7 +6073,6 @@ files = [
     {file = "zensical-0.0.71-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:57cad23c56a98d87a5eefa7948a98b6ecb479dc99fd7af312cd146555f55f060"},
     {file = "zensical-0.0.71-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:81c069cc667946e0a505cc01b99d5ba44883c57f51b95bd5a38003007c5cb6cd"},
     {file = "zensical-0.0.71-cp311-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:bcae388415698cac874e662e667fc0683833cec747607c89037b7e9ad9828830"},
-    {file = "zensical-0.0.71-cp311-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:0b34f58a7f565d956651baf90389aafca5c37a407a72768f30293e415589b932"},
     {file = "zensical-0.0.71-cp311-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fc8ed534717b61f285dc217f165f901f8b8a6142ef37cdd5544976cd99b5720c"},
     {file = "zensical-0.0.71-cp311-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:1e9e39aefdca4b3383b43014e117b27a1ca9f9ac4b25eefa9195099e5a566e2f"},
     {file = "zensical-0.0.71-cp311-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:d22b8924e5145d94bf85b81bd2a8afaeb32e78c8a1ddeb7f4201fc8902547221"},
@@ -6104,4 +6103,4 @@ sql = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "adbb943583728dd461e3cc73e64a5f48bc653d0db81f20747e1707e189adb501"
+content-hash = "80c15ed50bf25d54da736fd7a0a15691fa89c2a619468defc86f21866eb6aed1"
