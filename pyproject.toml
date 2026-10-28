@@ -77,7 +77,7 @@ mkdocstrings-python = "^2.0.10"
 griffe-pydantic = "^1.1.6"
 httpx = "^0.28.1"
 zensical = "^0.0.72"
-mkdocs-autorefs = "^1.4.4"
+mkdocs-autorefs = "^1.4.5"
 
 [build-system]
 requires = ["poetry-core"]
