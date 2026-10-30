@@ -1,3 +1,4 @@
+import sys
 from datetime import datetime
 from io import BytesIO, StringIO
 from pathlib import Path
@@ -293,6 +294,21 @@ def test_io_logged_items():
     items = list(range(5))
     result = list(logged_items(items, "Test"))
     assert result == items
+
+    # with a total, a progress bar routes stderr while iterating
+    stderr = sys.stderr
+    result = []
+    for item in logged_items(items, "Test", total=len(items)):
+        assert sys.stderr is not stderr
+        result.append(item)
+    assert result == items
+    assert sys.stderr is stderr
+
+    # and stops when the consumer bails out early
+    gen = logged_items(items, "Test", total=len(items))
+    next(gen)
+    gen.close()
+    assert sys.stderr is stderr
 
 
 def test_io_stream_bytes(tmp_path):

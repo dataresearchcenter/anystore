@@ -4,13 +4,16 @@ import logging
 from typing import Generator, Iterable, TypeVar
 
 from structlog.stdlib import BoundLogger
-from tqdm import tqdm
 
+from anystore.io.progress import DEFAULT_COLUMNS, SyncProgressBar, ThroughputColumn
 from anystore.logging import get_logger
 
 log = get_logger(__name__)
 
 T = TypeVar("T")
+
+# items carry no byte size, so a throughput column would only ever show 0 B/s
+COLUMNS = [c for c in DEFAULT_COLUMNS if not isinstance(c, ThroughputColumn)]
 
 
 def logged_items(
@@ -40,6 +43,8 @@ def logged_items(
         chunk_size: Log on every chunk_size
         item_name: Name of item
         logger: Specific logger to use
+        total: Number of items, if known, to render a progress bar instead
+            of logging every chunk_size
 
     Yields:
         The input items
@@ -50,7 +55,12 @@ def logged_items(
     item_name = item_name or "Item"
     if total:
         log_.info(f"{action} {total} `{item_name}s` ...", **log_kwargs)
-        yield from tqdm(items, total=total, unit=item_name)
+        with SyncProgressBar(
+            f"{action} {item_name}s", total=total, columns=COLUMNS
+        ) as bar:
+            for item in items:
+                yield item
+                bar.advance()
         ix = total
     else:
         for ix, item in enumerate(items, 1):

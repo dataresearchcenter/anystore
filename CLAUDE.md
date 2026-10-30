@@ -122,7 +122,7 @@ imports (e.g. `logic/io.py` type-hints `Store`).
   - `handler.py` — `SmartHandler`, `smart_open`
   - `read.py` — `smart_read`, `smart_stream`, `smart_stream_csv/json`, model variants, `open_virtual`
   - `write.py` — `smart_write`, `Writer`, `ModelWriter`, csv/json variants
-  - `logging.py` — `logged_items` (tqdm/structlog progress wrapper)
+  - `logging.py` — `logged_items` (structlog progress logging, or a `SyncProgressBar` when `total` is known)
   - `progress.py` — `SyncProgressBar`/`ProgressTask`/`Throughput` (rich multi-task
     progress display with byte throughput, plus `logging_through` which routes log
     output through the same console so bars and log lines don't garble each other)
