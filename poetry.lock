@@ -1314,14 +1314,14 @@ ssh = ["bcrypt (>=3.1.5)"]
 
 [[package]]
 name = "dateparser"
-version = "1.4.3"
+version = "1.5.1"
 description = "Date parsing library designed to parse dates from HTML pages"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "dateparser-1.4.3-py3-none-any.whl", hash = "sha256:cbce86c64e0cea5c54c84c015d34c903d46c51bfad50632bf2f05a6141d10c05"},
-    {file = "dateparser-1.4.3.tar.gz", hash = "sha256:bab8c43a746266e68142f4926e69438ce551441aa88e54e78bb6410bf3ee7000"},
+    {file = "dateparser-1.5.1-py3-none-any.whl", hash = "sha256:1d312d2dbc3cddd61fe96d336af733b54bd01d7beb5657a432c7d1c2a144a5c8"},
+    {file = "dateparser-1.5.1.tar.gz", hash = "sha256:1c3d4a568b4f4d615adfc2945b54596adffc14f955c9b435030b5236226a4366"},
 ]
 
 [package.dependencies]
@@ -6145,4 +6145,4 @@ sql = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.16"
-content-hash = "0a720f50f73e598d91c955fd727f69d34a57b61fae987c6ba0a612c6049e662d"
+content-hash = "6fb966caa20461c96b2485a95d379f39e731a7c96f4b2a48db5bc84e4d78b5e0"
