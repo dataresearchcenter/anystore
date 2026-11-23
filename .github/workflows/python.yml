@@ -48,7 +48,10 @@ jobs:
       - name: Install dependencies
         run: poetry install --with dev --all-extras
       - name: Run pre-commit hooks
-        run: poetry run pre-commit run
+        env:
+          # dependabot orders lock markers differently, poetry-check catches a stale lock
+          SKIP: poetry-lock
+        run: poetry run pre-commit run --all-files
       - name: Lint with flake8
         run: make lint
       - name: Test with pytest

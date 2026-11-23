@@ -89,7 +89,7 @@ class SqlFileSystem(AbstractFileSystem):
 
     protocol = "sql"
     root_marker = ""
-    cachable = False  # codespell:ignore-line
+    cachable = False  # codespell:ignore cachable
 
     @classmethod
     def _get_kwargs_from_urls(cls, path: str) -> dict:
