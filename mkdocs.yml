@@ -1,5 +1,5 @@
 site_name: anystore
-site_url: https://docs.investigraph.dev/lib/anystore
+site_url: https://darc.li/docs/anystore
 repo_url: https://github.com/dataresearchcenter/anystore
 nav:
   - Intro: index.md
@@ -35,8 +35,8 @@ nav:
       - anystore.settings: reference/settings.md
 theme:
   name: material
-  logo: https://cdn.investigativedata.org/style/logos/darc/svg/DARC-Logo-RGB-Horizontal-Neg.svg
-  favicon: https://cdn.investigativedata.org/style/logos/darc/favicon.ico
+  logo: https://darcdn.et/style/logos/darc/svg/DARC-Logo-RGB-Horizontal-Neg.svg
+  favicon: https://darcdn.et/style/logos/darc/favicon.ico
   custom_dir: docs/overrides
   palette:
     - media: "(prefers-color-scheme)"
@@ -62,9 +62,9 @@ theme:
     - toc.follow
     - content.code.copy
 extra_css:
-  - https://dataresearchcenter.github.io/zensical-theme-darc/stylesheets/darc-zensical.css
+  - https://darcdn.et/style/darc-zensical.css
 extra:
-  logo_light: https://cdn.investigativedata.org/style/logos/darc/svg/DARC-Logo-RGB-Horizontal-Pos.svg
+  logo_light: https://darcdn.et/style/logos/darc/svg/DARC-Logo-RGB-Horizontal-Pos.svg
   social:
     - icon: lucide/mail
       link: mailto:hi@dataresearchcenter.org
